@@ -6,20 +6,9 @@ from dataclasses import dataclass, field
 from typing import Dict, Any
 
 @dataclass
-class HomeKitConfig:
-    port: int = configparser.ConfigParser().getint('HAPCONFIG', 'port', fallback=51827)
-    persist_file_name: str = configparser.ConfigParser().get('HAPCONFIG', 'persist_file_name', fallback="homekit.json")
-    bridge_name: str = "Mi Raspberry Hub"
-    pincode: str = configparser.ConfigParser().get('HAPCONFIG', 'pincode', fallback="031-45-154")
-    listen_address: str = configparser.ConfigParser().get('HAPCONFIG', 'listen_address')
-    address: str = configparser.ConfigParser().get('HAPCONFIG', 'address')
-
-
-@dataclass
 class Config:
     CONFIG_DIR = Path('./.smarthome/')
     CONFIG_FILE = CONFIG_DIR / 'config.conf'
-    hap: HomeKitConfig = field(default_factory=HomeKitConfig)
 
     def __post_init__(self):
         # Crear directorios si no existen

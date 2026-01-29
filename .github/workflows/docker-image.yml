@@ -52,9 +52,13 @@ jobs:
       SSH_USERNAME: ${{ secrets.SERVERUSERNAME }}
       SSH_SERVERIP: ${{ secrets.SERVERIP }}
       SSH_PORT: ${{ secrets.SSHPORT }}
+      username: ${{ secrets.DOCKERUSER }}
+      password: ${{ secrets.DOCKERPASS }}
     steps:
       - name: Update machine
         run: sudo apt update
+      - name: Agregar una pausa para que se vea reflejada los nuevos cambios de la imagen
+        run: sleep 60s
       - name: Checkout the repository
         uses: actions/checkout@v4
         with:
@@ -83,6 +87,7 @@ jobs:
         run: |
           ssh -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP << 'EOF'
             docker compose -f ~/public/compose.yaml down
+            docker login -u $username -p $password
             docker pull arturocabb/testspersonales:controlSmartHome
             docker compose -f ~/public/compose.yaml pull
             docker compose -f ~/public/compose.yaml up -d

@@ -7,11 +7,14 @@ from typing import List, Dict
 from pyhap.accessory import Bridge
 from pyhap.accessory_driver import AccessoryDriver
 from config import config
+import configparser
 
 logger = logging.getLogger(__name__)
 
 class HAPService:
     """Servicio HAP/HomeKit"""
+    conf_parser = configparser.ConfigParser()
+    conf_parser.read(config.CONFIG_FILE)
     
     def __init__(self):
         self.accessories: Dict[str, object] = {}  # device_id -> accessory
@@ -21,22 +24,21 @@ class HAPService:
         logger.info("Inicializando servicio HAP...")
         
         # Crear driver
-        persist_file = str(config.CONFIG_DIR / config.hap.persist_file_name)
         
         self.driver = AccessoryDriver(
-            address=config.hap.address,
-            port= config.hap.port,
-            pincode= config.hap.pincode.encode('utf-8'),
-            persist_file=persist_file,
-            listen_address=config.hap.listen_address
+            address=self.conf_parser.get('HAPCONFIG', 'address'),
+            port= self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827),
+            pincode= self.conf_parser.get('HAPCONFIG', 'pincode', fallback="031-45-154"),
+            persist_file=self.conf_parser.get('HAPCONFIG', 'persist_file_name', fallback="homekit.json"),
+            listen_address=self.conf_parser.get('HAPCONFIG', 'listen_address')
         )
         
         # Crear bridge
-        self.bridge = Bridge(self.driver, config.hap.bridge_name)
+        self.bridge = Bridge(self.driver, "Mi Raspberry Hub")
         
-        logger.info(f"HAP Bridge creado: {config.hap.bridge_name}")
-        logger.info(f"  Puerto: {config.hap.port}")
-        logger.info(f"  PIN Code: {config.hap.pincode}")
+        logger.info(f"HAP Bridge creado: Mi Raspberry Hub")
+        logger.info(f"  Puerto: {self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827)}")
+        logger.info(f"  PIN Code: {self.conf_parser.get('HAPCONFIG', 'pincode', fallback='031-45-154')}")
     
     def add_accessory(self, device_id: str, accessory):
         """
@@ -85,7 +87,7 @@ class HAPService:
         
         # Iniciar servidor (bloqueante)
         logger.info("Servidor HAP en ejecución...")
-        logger.info(f"Escanea el código QR en la app Home con PIN: {config.hap.pincode}")
+        logger.info(f"Escanea el código QR en la app Home con PIN: {self.conf_parser.get('HAPCONFIG', 'pincode', fallback='031-45-154')}")
         
         self.driver.start()
     
