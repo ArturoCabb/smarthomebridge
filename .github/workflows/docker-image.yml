@@ -85,7 +85,7 @@ jobs:
           $SSH_USERNAME@$SSH_SERVERIP:/home/remoto/public/compose.yaml
       - name: Desplegar en el servidor remoto
         run: |
-          ssh -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP "export username='$username' export password='$password'" << 'EOF'
+          ssh -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP << 'EOF'
             docker compose -f ~/public/compose.yaml down
             docker pull arturocabb/testspersonales:controlSmartHome
             docker compose -f ~/public/compose.yaml pull
