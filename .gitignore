@@ -13,15 +13,10 @@ tests/
 __pycache__/
 *.pyc
 .vscode/
-.gitignore
 .smarthome
-compose.yaml
 hap_config.json
 hap_state.jsom
-miscript.service
-readme.md
 respuesta_estados.json
-runme.sh
 washer.json
 
 
