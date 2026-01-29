@@ -19,7 +19,7 @@ jobs:
 
     steps:
     - name: Update machine
-      run: sudo apt update && sudo apt upgrade -y
+      run: sudo apt update #&& sudo apt upgrade -y
     - name: Checkout the repository
       uses: actions/checkout@v4
       with:
