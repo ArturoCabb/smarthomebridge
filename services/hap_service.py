@@ -24,10 +24,10 @@ class HAPService:
         persist_file = str(config.CONFIG_DIR / config.hap.persist_file_name)
         
         self.driver = AccessoryDriver(
-            address='0.0.0.0',
             port= config.hap.port,
             pincode= config.hap.pincode.encode('utf-8'),
-            persist_file=persist_file
+            persist_file=persist_file,
+            listen_address='0.0.0.0'
         )
         
         # Crear bridge
