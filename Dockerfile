@@ -2,8 +2,6 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-EXPOSE 51827
-
 COPY requirements.txt .
 RUN apt update && \
  apt-get install -y --no-install-recommends libavahi-compat-libdnssd-dev && \ 

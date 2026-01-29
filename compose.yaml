@@ -1,6 +1,8 @@
 services:
   mi-servicio:
+    container_name: ControlSmartHome
     image: arturocabb/testspersonales:controlSmartHome
+    network_mode: host
     restart: unless-stopped
     environment:
       - API_KEYLG=${API_KEYLG}
