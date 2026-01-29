@@ -1,0 +1,16 @@
+async-timeout==5.0.1
+certifi==2026.1.4
+cffi==2.0.0
+chacha20poly1305-reuseable==0.13.2
+charset-normalizer==3.4.4
+cryptography==46.0.4
+h11==0.16.0
+HAP-python==5.0.0
+idna==3.11
+ifaddr==0.2.0
+orjson==3.11.5
+pycparser==3.0
+requests==2.32.5
+typing_extensions==4.15.0
+urllib3==2.6.3
+zeroconf==0.148.0

@@ -4,6 +4,28 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
 # User-specific files
+.git/
+.env
+.venv
+.qodo
+tests/
+*.log
+__pycache__/
+*.pyc
+.vscode/
+.github
+.gitignore
+.smarthome
+compose.yaml
+hap_config.json
+hap_state.jsom
+miscript.service
+readme.md
+respuesta_estados.json
+runme.sh
+washer.json
+
+
 *.rsuser
 *.suo
 *.user
