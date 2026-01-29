@@ -26,11 +26,11 @@ class HAPService:
         # Crear driver
         
         self.driver = AccessoryDriver(
-            address=self.conf_parser.get('HAPCONFIG', 'address'),
+            address=self.conf_parser.get('HAPCONFIG', 'address', fallback=None),
             port= self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827),
             pincode= self.conf_parser.get('HAPCONFIG', 'pincode', fallback="031-45-154"),
             persist_file=self.conf_parser.get('HAPCONFIG', 'persist_file_name', fallback="homekit.json"),
-            listen_address=self.conf_parser.get('HAPCONFIG', 'listen_address')
+            listen_address=self.conf_parser.get('HAPCONFIG', 'listen_address', fallback=None)
         )
         
         # Crear bridge
