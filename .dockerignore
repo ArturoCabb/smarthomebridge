@@ -17,3 +17,5 @@ readme.md
 respuesta_estados.json
 runme.sh
 washer.json
+Dockerfile
+requirements.txt

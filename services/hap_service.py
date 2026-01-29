@@ -34,7 +34,7 @@ class HAPService:
         )
         
         # Crear bridge
-        self.bridge = Bridge(self.driver, "Mi Raspberry Hub")
+        self.bridge = Bridge(self.driver, self.conf_parser.get('HAPCONFIG', 'address', fallback="Mi Raspberry Hub"))
         
         logger.info(f"HAP Bridge creado: Mi Raspberry Hub")
         logger.info(f"  Puerto: {self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827)}")
