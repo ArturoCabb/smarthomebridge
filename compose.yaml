@@ -10,7 +10,7 @@ services:
       - .env
     volumes:
       # Archivo específico
-      - ./SMARTHOME:/app/.smarthome
+      - ~/public/SMARTHOME:/app/.smarthome
     ports:
       - 51827:51827
       
