@@ -5,7 +5,10 @@ WORKDIR /app
 EXPOSE 51827
 
 COPY requirements.txt .
-RUN sudo apt update && sudo apt upgrade -y && sudo apt-get install libavahi-compat-libdnssd-dev -y && pip install --no-cache-dir -r requirements.txt && rm -rf /var/cache/pip/* && mkdir -p .smarthome
+RUN sudo apt update && \
+ sudo apt-get install -y --no-install-recommends build-essential libavahi-compat-libdnssd-dev && \ 
+ pip install --no-cache-dir -r requirements.txt && rm -rf /var/cache/pip/* && \ 
+ mkdir -p .smarthome
 
 COPY . .
 
