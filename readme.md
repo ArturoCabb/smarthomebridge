@@ -9,8 +9,9 @@ tenga en el directorio donde corre el script.
 
 En caso de que use un contendor de docker, asegurese de crear un volumen y agregar
 el archivo  configurando como valor minimo
-"x-client-id" que puede generar con la api de LGThinQ
+"x-client-id" (access_token), "message_id" y "client_id" que puede generar con la api de LGThinQ
 El archivo se debe de ver la siguiente manera
+```
 [HAPCONFIG]
 port = 51827
 persist_file_name = ./.smarthome/homekit.json
@@ -27,11 +28,11 @@ client_id=
 [TELEGRAM]
 base_url = 
 chat_id = 
-
+```
 
 
 Para el docker compose, puede copiar la siguiente configuracion
-
+```
 services:
   mi-servicio:
     image: arturocabb/testspersonales:controlSmartHome
@@ -47,3 +48,4 @@ services:
       - ~/public/SMARTHOME:/app/.smarthome
     ports:
       - 51827:51827
+```
