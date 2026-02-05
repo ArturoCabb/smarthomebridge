@@ -4,21 +4,46 @@ Se necesita correr el archivo runme.sh como sudo, este le ayudará a crear las v
 
 Para poder utilizar este proyecto corra telegramNoti.py, 
 este le ayudará a configurar sus credenciales de LG si es que no tiene el archivo
-SMARTHOME/configuration/config.json configurado. De lo contrario asegurese que lo
+.smarthome/config.conf configurado. De lo contrario asegurese que lo
 tenga en el directorio donde corre el script.
 
 En caso de que use un contendor de docker, asegurese de crear un volumen y agregar
-el archivo SMARTHOME/configuration/config.json configurando como valor minimo
+el archivo  configurando como valor minimo
 "x-client-id" que puede generar con la api de LGThinQ
 El archivo se debe de ver la siguiente manera
-{
-    "x-client-id": <Valor generado por api>
-}
-Las variables de entono son las siguientes
-API_KEYLG=<Generada desde la cuenta de LGThinQ>
-TELEGRAM_URL=<La url del chat para usar el chatbot de Telegram que despacha las notificaciones>
-chat_id=<El id del chat con el que vamos a hablar para recibir notificaciones>
+[HAPCONFIG]
+port = 51827
+persist_file_name = ./.smarthome/homekit.json
+bridge_name = Mi Raspberry Hub
+#listen_address = 0.0.0.0
+#address = 192.168.1.1
 
-En caso de usar contenedor, asegurece de pasar las variables de entorno al contenedor.
+[LG]
+base_url=https://api-aic.lgthinq.com
+access_token=
+message_id=
+client_id=
 
-Se puede crear un compose como en el archivo adjunto
+[TELEGRAM]
+base_url = 
+chat_id = 
+
+
+
+Para el docker compose, puede copiar la siguiente configuracion
+
+services:
+  mi-servicio:
+    image: arturocabb/testspersonales:controlSmartHome
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - API_KEYLG=${API_KEYLG}
+      - TELEGRAM_URL=${TELEGRAM_URL}
+      - chat_id=${chat_id}
+    env_file:
+      - .env
+    volumes:
+      - ~/public/SMARTHOME:/app/.smarthome
+    ports:
+      - 51827:51827
