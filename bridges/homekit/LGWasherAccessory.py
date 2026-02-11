@@ -17,6 +17,7 @@ class LGWasherAccessory(Accessory):
     config_vars.read(CONFIG_FILE, encoding='utf-8')
     telegram_url = config_vars.get('TELEGRAM','base_url')
     telegram_chatid = config_vars.getint('TELEGRAM','chat_id')
+    telegram_trigger = False
 
     def __init__(self, driver, display_name, device_id, device_manager):
         super().__init__(driver=driver, display_name=display_name)
@@ -24,7 +25,7 @@ class LGWasherAccessory(Accessory):
         self.device_id = device_id
         self.device_manager = device_manager
 
-        self.is_paused = False
+        self.is_paused = True
         self.delay = 0
 
         # --- 1. SERVICIO DE CONTROL PRINCIPAL (Usamos Television para el menú) ---
@@ -42,7 +43,7 @@ class LGWasherAccessory(Accessory):
         self.serv_main.add_linked_service(self.serv_power)
 
         # --- 3. DEFINICIÓN DE TIEMPO DE RETRASO (Input Sources) ---
-        self.tiempo_retardo = [i for i in range(1, 20)]  # Tiempo de retardo de 1 a 19 Horas
+        self.tiempo_retardo = [i for i in range(0, 20)]  # Tiempo de retardo de 1 a 19 Horas
 
         for index, time in enumerate(self.tiempo_retardo):
             input_serv = self.add_preload_service('InputSource', chars=['ConfiguredName', 'IsConfigured', 'InputSourceType', 'Identifier', 'Name'])
@@ -81,19 +82,7 @@ class LGWasherAccessory(Accessory):
         self.encendido.set_value(0)
 
     def set_pause_resume(self, value):
-        if not self.is_paused:
-            command = {
-                'location': {
-                    'locationName': 'MAIN',
-                },
-                'operation': {
-                    'washerOperationMode': 'STOP'
-                }
-            }
-            print("LG Washer is turned OFF")
-            self.device_manager.send_command(self.device_id, command)
-            self.char_on.set_value(0)
-        else:
+        if self.is_paused:
             command = {
                 'location': {
                     'locationName': 'MAIN',
@@ -105,9 +94,22 @@ class LGWasherAccessory(Accessory):
                     'relativeHourToStart': self.delay
                 }
             }
-            print("LG Washer is turned OFF")
+            print("LG Washer is turned ON")
             self.device_manager.send_command(self.device_id, command)
             self.char_on.set_value(1)
+        else:
+            command = {
+                'location': {
+                    'locationName': 'MAIN',
+                },
+                'operation': {
+                    'washerOperationMode': 'STOP'
+                }
+            }
+            print("LG Washer is turned OFF")
+            self.device_manager.send_command(self.device_id, command)
+            self.char_on.set_value(0)
+            
 
     def set_delay_time(self, value):
         # 'value' será el número (index) que seleccionaste
@@ -128,10 +130,13 @@ class LGWasherAccessory(Accessory):
         if state.state.get('state') == "RINSING":
             self.char_status_ocupancy_detected.set_value(1)
             self.char_status_ocupancy_status_tampered.set_value(1)
-            requests.get(url=self.telegram_url, json={"chat_id": self.telegram_chatid, "text": "La lavadora termino de lavar y ahora va a enjuagar"})
+            if self.telegram_trigger == False:
+                requests.get(url=self.telegram_url, json={"chat_id": self.telegram_chatid, "text": "La lavadora termino de lavar y ahora va a enjuagar"})
+                self.telegram_trigger = True
         else:
             self.char_status_ocupancy_detected.set_value(0)
             self.char_status_ocupancy_status_tampered.set_value(0)
+            self.telegram_trigger = False
 
         # Actualizar estado de boton iniciar/pausar
         if state.state.get('state') != "POWER_OFF" and state.state.get('state') != "PAUSE" and state.state.get('remote_start'):

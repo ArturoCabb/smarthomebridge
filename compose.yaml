@@ -10,13 +10,6 @@ services:
     env_file:
       - .env
     volumes:
-      # Archivo específico
       - ~/public/SMARTHOME:/app/.smarthome
     ports:
       - 51827:51827
-      
-      # Carpeta completa
-      #- ./data:/app/data
-    
-      # Archivo con ruta absoluta
-      #- /home/usuario/config.ini:/app/config.ini
