@@ -56,7 +56,6 @@ class LGThinQClient(BaseClient):
         url = f"{self.BASE_URL}{endpoint}"
         
         try:
-            logger.info(f"{method} {url}")
             
             response = self.session.request(
                 method=method,
