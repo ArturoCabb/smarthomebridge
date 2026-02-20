@@ -10,9 +10,11 @@ import configparser
 
 # opcional: limitar Zeroconf a una interfaz específica para evitar errores
 try:
+    import zeroconf as _zc_module
     from zeroconf import Zeroconf as _Zeroconf
     import pyhap.accessory_driver as _pyhap_ad
 except Exception:
+    _zc_module = None
     _Zeroconf = None
     _pyhap_ad = None
 
@@ -41,8 +43,19 @@ class HAPService:
                         kwargs['interfaces'] = [listen_addr]
                     return _Zeroconf(*args, **kwargs)
 
-                _pyhap_ad.Zeroconf = _zc_factory
-                logger.info(f"Zeroconf limitado a la interfaz: {listen_addr}")
+                # parche a nivel de módulo zeroconf para cubrir casos donde
+                # pyhap ya importe Zeroconf de manera directa
+                if _zc_module is not None:
+                    try:
+                        _zc_module.Zeroconf = _zc_factory
+                        logger.info(f"Zeroconf (módulo) parcheado para interfaces: {listen_addr}")
+                    except Exception:
+                        # fallback: intentar parchear pyhap.accessory_driver
+                        _pyhap_ad.Zeroconf = _zc_factory
+                        logger.info(f"Zeroconf parcheado en pyhap.accessory_driver para: {listen_addr}")
+                else:
+                    _pyhap_ad.Zeroconf = _zc_factory
+                    logger.info(f"Zeroconf parcheado en pyhap.accessory_driver para: {listen_addr}")
             except Exception as e:
                 logger.warning(f"No se pudo limitar Zeroconf: {e}")
 
