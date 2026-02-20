@@ -8,6 +8,14 @@ from pyhap.accessory_driver import AccessoryDriver
 from config import config
 import configparser
 
+# opcional: limitar Zeroconf a una interfaz específica para evitar errores
+try:
+    from zeroconf import Zeroconf as _Zeroconf
+    import pyhap.accessory_driver as _pyhap_ad
+except Exception:
+    _Zeroconf = None
+    _pyhap_ad = None
+
 logger = logging.getLogger(__name__)
 
 class HAPService:
@@ -23,17 +31,32 @@ class HAPService:
         logger.info("Inicializando servicio HAP...")
         
         # Crear driver
-        
+        # Si en la configuración existe `listen_address`, forzamos a Zeroconf
+        # a usar esa interfaz para evitar intentos por otras (ej. wg0)
+        listen_addr = self.conf_parser.get('HAPCONFIG', 'listen_address', fallback=None)
+        if listen_addr and _Zeroconf and _pyhap_ad:
+            try:
+                def _zc_factory(*args, **kwargs):
+                    if 'interfaces' not in kwargs:
+                        kwargs['interfaces'] = [listen_addr]
+                    return _Zeroconf(*args, **kwargs)
+
+                _pyhap_ad.Zeroconf = _zc_factory
+                logger.info(f"Zeroconf limitado a la interfaz: {listen_addr}")
+            except Exception as e:
+                logger.warning(f"No se pudo limitar Zeroconf: {e}")
+
         self.driver = AccessoryDriver(
-            address = self.conf_parser.get('HAPCONFIG', 'address', fallback=None),
-            port= self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827),
-            pincode = self.conf_parser.get('HAPCONFIG', 'pincode', fallback="031-45-154").encode(),
-            persist_file = self.conf_parser.get('HAPCONFIG', 'persist_file_name', fallback="homekit.json"),
-            listen_address = self.conf_parser.get('HAPCONFIG', 'listen_address', fallback=None)
+            address=self.conf_parser.get('HAPCONFIG', 'address', fallback=None),
+            port=self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827),
+            pincode=self.conf_parser.get('HAPCONFIG', 'pincode', fallback="031-45-154").encode(),
+            persist_file=self.conf_parser.get('HAPCONFIG', 'persist_file_name', fallback="homekit.json"),
+            listen_address=listen_addr
         )
         
-        # Crear bridge
-        self.bridge = Bridge(self.driver, self.conf_parser.get('HAPCONFIG', 'address', fallback="Mi Raspberry Hub"))
+        # Crear bridge usando el nombre definido en la configuración
+        bridge_name = self.conf_parser.get('HAPCONFIG', 'bridge_name', fallback="Mi Raspberry Hub")
+        self.bridge = Bridge(self.driver, bridge_name)
         
         logger.info(f"HAP Bridge creado: Mi Raspberry Hub")
         logger.info(f"  Puerto: {self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827)}")
