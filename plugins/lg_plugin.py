@@ -1,5 +1,3 @@
-# plugins/lg_plugin.py
-
 from asyncio.log import logger
 from pathlib import Path
 from typing import Any, Dict, List
@@ -72,8 +70,6 @@ class LGPlugin(BasePlugin):
         try:
             client = self.client
             snapshot = client.get_device_state(device_id)
-            #print(snapshot)
-            # Parsear según tipo
             if 'DEVICE_WASHER' == device_type:
                 return WasherState.from_json(snapshot)
             else:

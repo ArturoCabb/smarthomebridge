@@ -1,11 +1,7 @@
-from pathlib import Path
 from pyhap.accessory import Accessory
-from pyhap.accessory_driver import AccessoryDriver
-from pyhap.const import CATEGORY_LIGHTBULB, CATEGORY_OTHER, CATEGORY_SENSOR
-from pyhap.iid_manager import IIDManager
+from pyhap.const import CATEGORY_OTHER
 import requests
 import configparser
-from plugins.base_plugin import BasePlugin
 
 class LGWasherAccessory(Accessory):
     """Accessory to turn on/off the LG Washer."""

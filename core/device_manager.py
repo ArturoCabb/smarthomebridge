@@ -97,7 +97,6 @@ class DeviceManager:
         device = self.get_device(device_id)
         if device:
             device.callbacks.append(callback)
-            logger.debug(f"Callback registrado para {device_id}")
     
     def update_device_state(self, device_id: str, new_state: Dict):
         """
@@ -118,8 +117,6 @@ class DeviceManager:
             device.state = new_state
             #print(device.state)
             device.last_update = datetime.now()
-            
-            logger.debug(f"Estado actualizado: {device.name}")
             
             # Notificar a callbacks
             for callback in device.callbacks:

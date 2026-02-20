@@ -1,9 +1,8 @@
 """
 Servicio HAP/HomeKit que maneja el Bridge y accesorios
 """
-import signal
 import logging
-from typing import List, Dict
+from typing import Dict
 from pyhap.accessory import Bridge
 from pyhap.accessory_driver import AccessoryDriver
 from config import config

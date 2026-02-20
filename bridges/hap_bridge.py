@@ -92,6 +92,5 @@ class HAPBridge:
         if accessory and hasattr(accessory, 'update_from_device_state'):
             try:
                 accessory.update_from_device_state(device_state)
-                logger.debug(f"Accessory HAP actualizado: {device_state.name}")
             except Exception as e:
-                logger.error(f"Error actualizando accessory: {e}")
+                pass
