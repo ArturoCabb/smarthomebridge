@@ -7,16 +7,7 @@ from pyhap.accessory import Bridge
 from pyhap.accessory_driver import AccessoryDriver
 from config import config
 import configparser
-
-# opcional: limitar Zeroconf a una interfaz específica para evitar errores
-try:
-    import zeroconf as _zc_module
-    from zeroconf import Zeroconf as _Zeroconf
-    import pyhap.accessory_driver as _pyhap_ad
-except Exception:
-    _zc_module = None
-    _Zeroconf = None
-    _pyhap_ad = None
+import netifaces
 
 logger = logging.getLogger(__name__)
 
@@ -27,49 +18,44 @@ class HAPService:
     
     def __init__(self):
         self.accessories: Dict[str, object] = {}  # device_id -> accessory
-    
+
+    # Función para decirle a pyhap qué interfaces NO debe usar
+    def ignorar_wg0(self, iface):
+        # iface es un diccionario con info de la interfaz
+        # Devuelve True si la interfaz nos interesa (la incluye), False si no.
+        
+        # 1. Obtener el nombre de la interfaz de forma segura
+        iface_name = iface.get('name')
+        if not iface_name:
+            # Si no hay nombre, no podemos confiar en ella, la ignoramos.
+            return False
+        
+        # 2. Ignorar explícitamente la interfaz de WireGuard
+        if iface_name == 'wg0':
+            return False  # No la uses
+            
+        # 3. Permitir cualquier otra interfaz (como eth0, wlan0)
+        # Si quieres ser más estricto y solo usar una específica (ej. eth0),
+        # podrías cambiar esta parte.
+        return True
+
     def initialize(self):
         """Inicializar el servicio HAP"""
         logger.info("Inicializando servicio HAP...")
         
         # Crear driver
-        # Si en la configuración existe `listen_address`, forzamos a Zeroconf
-        # a usar esa interfaz para evitar intentos por otras (ej. wg0)
-        listen_addr = self.conf_parser.get('HAPCONFIG', 'listen_address', fallback=None)
-        if listen_addr and _Zeroconf and _pyhap_ad:
-            try:
-                def _zc_factory(*args, **kwargs):
-                    if 'interfaces' not in kwargs:
-                        kwargs['interfaces'] = [listen_addr]
-                    return _Zeroconf(*args, **kwargs)
-
-                # parche a nivel de módulo zeroconf para cubrir casos donde
-                # pyhap ya importe Zeroconf de manera directa
-                if _zc_module is not None:
-                    try:
-                        _zc_module.Zeroconf = _zc_factory
-                        logger.info(f"Zeroconf (módulo) parcheado para interfaces: {listen_addr}")
-                    except Exception:
-                        # fallback: intentar parchear pyhap.accessory_driver
-                        _pyhap_ad.Zeroconf = _zc_factory
-                        logger.info(f"Zeroconf parcheado en pyhap.accessory_driver para: {listen_addr}")
-                else:
-                    _pyhap_ad.Zeroconf = _zc_factory
-                    logger.info(f"Zeroconf parcheado en pyhap.accessory_driver para: {listen_addr}")
-            except Exception as e:
-                logger.warning(f"No se pudo limitar Zeroconf: {e}")
-
+        
         self.driver = AccessoryDriver(
-            address=self.conf_parser.get('HAPCONFIG', 'address', fallback=None),
-            port=self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827),
-            pincode=self.conf_parser.get('HAPCONFIG', 'pincode', fallback="031-45-154").encode(),
-            persist_file=self.conf_parser.get('HAPCONFIG', 'persist_file_name', fallback="homekit.json"),
-            listen_address=listen_addr
+            address = self.conf_parser.get('HAPCONFIG', 'address', fallback=None),
+            port= self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827),
+            pincode = self.conf_parser.get('HAPCONFIG', 'pincode', fallback="031-45-154").encode(),
+            persist_file = self.conf_parser.get('HAPCONFIG', 'persist_file_name', fallback="homekit.json"),
+            listen_address = self.conf_parser.get('HAPCONFIG', 'listen_address', fallback=None),
+            #interface_choice=self.ignorar_wg0,
         )
         
-        # Crear bridge usando el nombre definido en la configuración
-        bridge_name = self.conf_parser.get('HAPCONFIG', 'bridge_name', fallback="Mi Raspberry Hub")
-        self.bridge = Bridge(self.driver, bridge_name)
+        # Crear bridge
+        self.bridge = Bridge(self.driver, self.conf_parser.get('HAPCONFIG', 'address', fallback="Mi Raspberry Hub"))
         
         logger.info(f"HAP Bridge creado: Mi Raspberry Hub")
         logger.info(f"  Puerto: {self.conf_parser.getint('HAPCONFIG', 'port', fallback=51827)}")
@@ -107,8 +93,7 @@ class HAPService:
     def start(self):
         """Iniciar el servidor HAP"""
         if not self.driver or not self.bridge:
-            raise RuntimeError("Servicio HAP no inicializado. Llama a initialize() primero")
-        
+            raise RuntimeError("Servicio HAP no inicializado. Llama a initialize() primero")        
         logger.info("=" * 60)
         logger.info("Iniciando servidor HAP...")
         logger.info(f"Accesorios registrados: {len(self.accessories)}")
