@@ -8,7 +8,6 @@ from pyhap.accessory_driver import AccessoryDriver
 from zeroconf import InterfaceChoice
 from config import config
 import configparser
-import netifaces
 
 logger = logging.getLogger(__name__)
 
@@ -19,26 +18,6 @@ class HAPService:
     
     def __init__(self):
         self.accessories: Dict[str, object] = {}  # device_id -> accessory
-
-    # Función para decirle a pyhap qué interfaces NO debe usar
-    def ignorar_wg0(self, iface):
-        # iface es un diccionario con info de la interfaz
-        # Devuelve True si la interfaz nos interesa (la incluye), False si no.
-        
-        # 1. Obtener el nombre de la interfaz de forma segura
-        iface_name = iface.get('name')
-        if not iface_name:
-            # Si no hay nombre, no podemos confiar en ella, la ignoramos.
-            return False
-        
-        # 2. Ignorar explícitamente la interfaz de WireGuard
-        if iface_name == 'wg0':
-            return False  # No la uses
-            
-        # 3. Permitir cualquier otra interfaz (como eth0, wlan0)
-        # Si quieres ser más estricto y solo usar una específica (ej. eth0),
-        # podrías cambiar esta parte.
-        return True
 
     def initialize(self):
         """Inicializar el servicio HAP"""
