@@ -5,6 +5,7 @@ import logging
 from typing import Dict
 from pyhap.accessory import Bridge
 from pyhap.accessory_driver import AccessoryDriver
+from zeroconf import InterfaceChoice
 from config import config
 import configparser
 import netifaces
@@ -51,7 +52,8 @@ class HAPService:
             pincode = self.conf_parser.get('HAPCONFIG', 'pincode', fallback="031-45-154").encode(),
             persist_file = self.conf_parser.get('HAPCONFIG', 'persist_file_name', fallback="homekit.json"),
             listen_address = self.conf_parser.get('HAPCONFIG', 'listen_address', fallback=None),
-            interface_choice=self.ignorar_wg0,
+            #interface_choice=self.ignorar_wg0,
+            interface_choice=InterfaceChoice.Default
         )
         
         # Crear bridge
