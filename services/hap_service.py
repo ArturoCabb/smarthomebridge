@@ -51,7 +51,7 @@ class HAPService:
             pincode = self.conf_parser.get('HAPCONFIG', 'pincode', fallback="031-45-154").encode(),
             persist_file = self.conf_parser.get('HAPCONFIG', 'persist_file_name', fallback="homekit.json"),
             listen_address = self.conf_parser.get('HAPCONFIG', 'listen_address', fallback=None),
-            #interface_choice=self.ignorar_wg0,
+            interface_choice=self.ignorar_wg0,
         )
         
         # Crear bridge
