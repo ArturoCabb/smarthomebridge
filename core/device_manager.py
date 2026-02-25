@@ -42,7 +42,7 @@ class DeviceManager:
         
         self._sync_thread = None
         self._running = False
-        self._sync_interval = 30  # segundos
+        self._sync_interval = 10  # segundos
         
         self._lock = threading.Lock()
     
@@ -167,7 +167,7 @@ class DeviceManager:
             logger.error(f"Error enviando comando: {e}")
             return False
     
-    def start_sync(self, interval: int = 30):
+    def start_sync(self, interval: int = 10):
         """
         Iniciar sincronización automática de estados.
         
