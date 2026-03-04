@@ -20,6 +20,19 @@ class Config:
 port = 51827
 persist_file_name = homekit.json
 bridge_name = Mi Raspberry Hub
+address =
+listen_address =
+pincode = 031-45-154
+
+[SMARTTHINGS]
+host = 0.0.0.0
+port = 5001
+my_client_id = TU_CLIENT_ID
+my_client_secret = TU_CLIENT_SECRET
+endpoint_app_id = TU_ENDPOINT_ID
+st_client_id = TU_ST_CLIENT_ID
+st_client_secret = TU_ST_CLIENT_SECRET
+credentials_file = smarthome/smrtthingsSettings.json
 
 [LG]
 access_token = TU_ACCESS_TOKEN_AQUI
@@ -28,7 +41,7 @@ client_id = TU_CLIENT_ID
 """
         with open(self.CONFIG_FILE, 'w') as f:
             f.write(template)
-        
+
         print(f"Plantilla creada en: {self.CONFIG_FILE}")
         print("Edita el archivo y agrega tus credenciales")
 

@@ -3,21 +3,45 @@ from authlib.integrations.flask_client import OAuth
 from authlib.oauth2.rfc6749 import grants
 import secrets
 from requests import post as send_req
-from json import dumps
+from json import dumps, loads
+from uuid import uuid4
+import configparser
+import os
 
 app = Flask(__name__)
-
+file_configuration_server = "smrtthingsSettings.json" # Este es la variable de la ruta de configuracion que si se mete el codigo de este archivo en una clase, esta variable se debe poder asignar valor
+port = 5001 # Este es el puerto del servidor web que si se mete el codigo de este archivo en una clase, esta variable se debe poder asignar valor
 # Almacén simple de códigos (en producción usa BD)
-url = "https://c2c-us.smartthings.com/oauth/callback"
-client_id = "arturocabb"
-client_secret = "arturocasahouseiot"
-scopes = ""
-authorization_codes = {}
-token_sesion = ""
-refresh_token_sesion = ""
-Endpoint_App_Id = "viper_a344df40-14d7-11f1-8d45-1b8707fbd01e"
-St_Client_Id = "e9b12e22-5528-4a51-9e43-13a83e00ba58"
-St_Client_Secret = "3ad66aeea9df843f165eb85ed9f6adc6afc7e29a1c828fbf163f9201f8c25c581acce9b1e10c6af008b9769a7316b555bf85811532da42b6bb44a27936ec86b4b2758a955a7c2e4d641470b4355e298beec051425e56e65856ca0156706137fed57e12c56cab903c2f2863b9ad8dbb672929f53da0b4f6bc90c079af411c0e0d12e5f4e71fccc9dcad4a3dd7656db7330e1f77eb29fd1d4640bb147bb07df7d4715db1b28105028cb10b478894012ec432455a61481309c02716a85c74958ef6ee8825c390739a166ac19259a9fe2f30301d43f19ad723b33feef49752ba6912d8b83e6497f66d862be89269fb9349f6d50030f913762d227ef06f6560f27360"
+read_config = configparser.ConfigParser()
+read_config.read("config.conf")
+my_client_id = read_config.get("SMARTTHINGS", "my_client_id")
+my_client_secret = read_config.get("SMARTTHINGS", "my_client_secret")
+Endpoint_App_Id = read_config.get("SMARTTHINGS", "Endpoint_App_Id")
+St_Client_Id = read_config.get("SMARTTHINGS", "St_Client_Id")
+St_Client_Secret = read_config.get("SMARTTHINGS", "St_Client_Secret")
+code = ""
+callbackUrlsoauthToken = ""
+callbackUrlsstateCallback = ""
+token_from_smartthings = ""
+refresh_token_sesion_smartthings = ""
+
+def save_shake(data, file_name = "smrtthingsSettings.json"):
+    with open(file_name, "w+") as file:
+        file.write(dumps(data, indent=2))
+
+def read_conf_file(file_name = "smrtthingsSettings.json"):
+    global code
+    global callbackUrlsoauthToken
+    global callbackUrlsstateCallback
+    global token_from_smartthings
+    global refresh_token_sesion_smartthings
+    with open(file_name, "r") as file:
+        d = loads(file.read())
+        code = d[1].get("callbackAuthentication").get("code")
+        callbackUrlsoauthToken = d[2].get("callbackUrls").get("oauthToken")
+        callbackUrlsstateCallback = d[2].get("callbackUrls").get("stateCallback")
+        token_from_smartthings = d[3].get("callbackAuthentication").get("accessToken")
+        refresh_token_sesion_smartthings = d[3].get("callbackAuthentication").get("refreshToken")
 
 # --- Flujo de Autorización ---
 @app.route('/oauth/login', methods=['GET', 'POST'])
@@ -31,6 +55,9 @@ def authorize():
         print(f"SmartThings pide redirigir a: {redirect_uri}")
         print(f"State: {state}")
         print(f"Client ID: {client_id}")
+
+        if client_id != my_client_id:
+            return "Denegado, tu no tienes permiso para entrar.", 401
         
         # Si Nginx se comió la URL, forzamos la de US para que no falle
         if not redirect_uri:
@@ -54,14 +81,8 @@ def authorize():
             client_id = request.form.get('client_id')
 
             code = secrets.token_urlsafe(32)
-            authorization_codes[code] = {
-                'client_id': client_id,
-                'user_id': 'usuario_prueba'
-            }
             
             final_url = f"{redirect_uri}?code={code}&state={state}"
-            print(f"--- [POST /oauth/login] ---")
-            print(f"Redirigiendo finalmente a: {final_url}")
             print("-"*50)
             
             # Redirigimos
@@ -78,21 +99,6 @@ def token():
     print("\n"*2 + " este es el Basic Auth ")
     data1 = request.authorization
     print(data1)
-
-    code = data.get('code')
-    client_id = data.get('client_id')
-    client_secret = data.get('client_secret')
-    
-    # Valida credenciales y código
-    #if client_id != St_Client_Id or client_secret != St_Client_Secret:
-    #    return {'error': 'invalid_client'}, 401
-    
-    #if code not in authorization_codes:
-    #    return {'error': 'invalid_grant'}, 400
-    
-    # Elimina el código usado (one-time use)
-    #del authorization_codes[code]
-    
     # Genera tokens (en producción usa JWT o tokens persistentes)
     access_token = secrets.token_urlsafe(32)
     token_sesion = access_token
@@ -110,6 +116,7 @@ def token():
 
 @app.route('/target-endpoint', methods=['GET', 'POST'])
 def target_endpoint():
+    print("-"*10 + " [Aqui inicia target end point] " + "-"*10)
     respuesta = {}
     data: dict = request.get_json() if request.is_json else request.form.to_dict()
     if not data:
@@ -118,28 +125,33 @@ def target_endpoint():
     request_id = data.get('headers', {}).get('requestId')
     operatin_type: str = data.get('headers', {}).get('interactionType')
     if operatin_type == "discoveryRequest":
-        print("-"*10 + f" Respuesta recibida para {operatin_type} " + "-"*10)
-        print("data recibida del server " + str(data))
-        print("-"*50)
         respuesta = handle_device_discovered(request_id)
     elif operatin_type == "stateRefreshRequest":
-        print("-"*10 + f" Respuesta recibida para {operatin_type} " + "-"*10)
-        print("data recibida del server " + str(data))
-        print("-"*50)
-        respuesta = state_refresh_request(request_id)
+        devicess = data.get("devices")
+        respuesta = state_refresh_request(request_id, devicess)
     elif operatin_type == "commandRequest":
         # TODO: Aqui hay que validar el token
         print("-"*10 + f" Respuesta recibida para {operatin_type} " + "-"*10)
+        print("data recibida del server de autorization " + str(request.authorization))
         print("data recibida del server " + str(data))
-        print("-"*50)
         respuesta = command_request(request_id)
+        print("-"*50)
     elif operatin_type == "grantCallbackAccess":
+        global code
+        global callbackUrlsoauthToken
+        global callbackUrlsstateCallback
         print("-"*10 + f" Respuesta recibida para {operatin_type} " + "-"*10)
         print("data recibida del server " + str(data))
+        code = data.get("callbackAuthentication").get("code")
+        callbackUrlsoauthToken = data.get("callbackUrls").get("oauthToken")
+        callbackUrlsstateCallback = data.get("callbackUrls").get("stateCallback")
+        rr = send_token_request()
+        datos = [data.get("authentication"), data.get("callbackAuthentication"), data.get("callbackUrls"), rr.get("callbackAuthentication")]
+        save_shake(datos)
         print("-"*50)
     return respuesta, 200
 
-def handle_device_discovered(request_id):
+def handle_device_discovered(request_id, devices_list: list):
     result = {
         "headers": {
             "schema": "st-schema",
@@ -149,29 +161,12 @@ def handle_device_discovered(request_id):
         },
         "requestGrantCallbackAccess": True,
         "devices": [
-            {
-            "externalDeviceId": "Tedst no wifi",
-            "deviceCookie": {"updatedcookie": "old or new value"},
-            "friendlyName": "Kitchen Bulb",
-            "manufacturerInfo": {
-                "manufacturerName": "LIFX",
-                "modelName": "A19 Color Bulb",
-                "hwVersion": "v1 US bulb",
-                "swVersion": "23.123.231"
-            },
-            "deviceContext" : {
-                "roomName": "Kitchen",
-                "groups": ["Kitchen Lights", "House Bulbs"],
-                "categories": ["light", "switch"]
-            },
-            "deviceHandlerType": "c2c-rgbw-color-bulb",
-            "deviceUniqueId": "Tedst no wifi"
-            },
+            i.to_discovery_dict() for i in devices_list
         ]
     }
     return result
 
-def state_refresh_request(request_id):
+def state_refresh_request(request_id, devices_list: list):
     result = {
         "headers": {
             "schema": "st-schema",
@@ -180,53 +175,13 @@ def state_refresh_request(request_id):
             "requestId": request_id
         },
         "deviceState": [
-            {
-                "externalDeviceId": "Tedst no wifi",
-                "deviceCookie": {},
-                "states": [
-                    {
-                        "component": "main",
-                        "capability": "st.healthCheck",
-                        "attribute": "healthStatus",
-                        "value": "online"
-                    },
-                    {
-                        "component": "main",
-                        "capability": "st.switch",
-                        "attribute": "switch",
-                        "value": "on"
-                    },
-                    {
-                        "component": "main",
-                        "capability": "st.switchLevel",
-                        "attribute": "level",
-                        "value": 80
-                    },
-                    {
-                        "component": "main",
-                        "capability": "st.colorControl",
-                        "attribute": "hue",
-                        "value": 0
-                    },
-                    {
-                        "component": "main",
-                        "capability": "st.colorControl",
-                        "attribute": "saturation",
-                        "value": 0          
-                    },
-                    {
-                        "component": "main",
-                        "capability": "st.colorTemperature",
-                        "attribute": "colorTemperature",
-                        "value": 3500
-                    }        
-                ]
-            }
+            i.state_refresh_request() for i in devices_list
         ]
     }
     return result
 
-def command_request(request_id):
+def command_request(request_id, devices_list: list):
+    # Este regresa el estado del dispositivo
     result = {
         "headers": {
             "schema": "st-schema",
@@ -235,164 +190,99 @@ def command_request(request_id):
             "requestId": request_id
         },
         "deviceState": [
-            {
-                "externalDeviceId": "Tedst no wifi",
-                "deviceCookie": {},
-                "states": [
-                    {
-                        "component": "main",
-                        "capability": "st.colorControl",
-                        "attribute": "hue",
-                        "value": 0.8333333333333334
-                    },
-                    {
-                        "component": "main",
-                        "capability": "st.switch",
-                        "attribute": "switch",
-                        "value": "off"
-                    },
-                    {
-                        "component": "main",
-                        "capability": "st.switchLevel",
-                        "attribute": "level",
-                        "value": 80
-                    }
-                ]
-            }
+            i.to_command_request() for i in devices_list
         ]
     }
     return result
 
-@app.route('/send-token-request', methods=['GET'])
 def send_token_request():
-    request_id = request.get_json().get("request_id")
-    code = request.get_json().get("code")
+    global code
+    global callbackUrlsoauthToken
+    global token_from_smartthings
+    global refresh_token_sesion_smartthings
     message = {
         "headers": {
             "schema": "st-schema",
             "version": "1.0",
             "interactionType": "accessTokenRequest",
-            "requestId": request_id
+            "requestId": str(uuid4())
         },
         "callbackAuthentication": {
             "grantType": "authorization_code",
-            "code": code,
+            "code":code,
             "clientId": St_Client_Id,
             "clientSecret": St_Client_Secret
         }
     }
-    result = send_req("una_url", data=dumps(message)).json()
-    return result, 200
+    print("-"*50 + " Aqui inicia el [accesTokenRequest] " + "-"*50)
+    result = send_req(callbackUrlsoauthToken, data=dumps(message))
+    print(result.json())
+    print("-"*50)
+    return result.json(), result.status_code
 
-@app.route('/refresh-token', methods=['GET'])
 def refresh_token():
-    request_id = request.get_json().get("request_id")
-    refresh_token = request.get_json().get("refresh_token")
+    global callbackUrlsoauthToken
+    global refresh_token_sesion_smartthings
     message = {
         "headers": {
             "schema": "st-schema",
             "version": "1.0",
             "interactionType": "refreshAccessTokens",
-            "requestId": request_id
+            "requestId": str(uuid4())
         },
         "callbackAuthentication": {
             "grantType": "refresh_token",
-            "refreshToken": refresh_token,
+            "refreshToken": refresh_token_sesion_smartthings,
             "clientId": St_Client_Id,
             "clientSecret": St_Client_Secret
         }
     }
-    result = send_req("una_url", data=dumps(message)).json()
-    return result, 200
+    result = send_req(callbackUrlsoauthToken, data=dumps(message))
+    print("Refresh token")
+    print(result.json())
+    print("-"*50)
+    return result.json(), result.status_code
 
-@app.route('/send-device-status', methods=['GET'])
-def send_device_status():
-    request_id = request.get_json().get("request_id")
-    token = request.get_json().get("token")
-    temp_dev_id = "Tedst no wifi"
-    result = {
+def send_device_status(devices_list: list):
+    message = {
     "headers": {
         "schema": "st-schema",
         "version": "1.0",
         "interactionType": "stateCallback",
-        "requestId": request_id
+        "requestId": str(uuid4())
     },
     "authentication": {
         "tokenType": "Bearer",
-        "token": token
+        "token": token_from_smartthings
     },
     "deviceState": [
-        {
-            "externalDeviceId": "Tedst no wifi",
-            "states": [
-                {
-                    "component": "main",
-                    "capability": "st.button",
-                    "attribute": "button",
-                    "value": "pushed",
-                    "timestamp": 1568248946010,
-                    "stateChange": "Y"
-                }
-            ]
-        },
+        i.send_device_status() for i in devices_list
     ]
 }
-    result = send_req(f"https://api.smartthings.com/v1/devices/{temp_dev_id}").json()
-    return result, 200
+    result = send_req(callbackUrlsstateCallback, data=message)
+    return result.json(), result.status_code 
 
-@app.route('/discovery-callback', methods=['GET'])
-def discovery_callback():
-    request_id = request.get_json().get("request_id")
-    token = request.get_json().get("token")
+def discovery_callback(devices_list: list):
     message = {
         "headers": {
             "schema": "st-schema",
             "version": "1.0",
             "interactionType": "discoveryCallback",
-            "requestId": request_id
+            "requestId": str(uuid4())
         },
         "authentication": {
             "tokenType": "Bearer",
-            "token": token
+            "token": token_from_smartthings
         },
         "devices": [
-            {
-            "externalDeviceId": "Tedst no wifi",
-            "deviceCookie": {"updatedcookie": "old or new value"},
-            "friendlyName": "Kitchen Bulb",
-            "manufacturerInfo": {
-                "manufacturerName": "LIFX",
-                "modelName": "A19 Color Bulb",
-                "hwVersion": "v1 US bulb",
-                "swVersion": "23.123.231"
-            },
-            "deviceContext" : {
-                "roomName": "Kitchen",
-                "groups": ["Kitchen Lights", "House Bulbs"]
-            },
-            "deviceHandlerType": "c2c-rgbw-color-bulb"
-        },
-        {
-            "externalDeviceId": "partner-device-id-2",
-            "deviceCookie": {"updatedcookie": "old or new value"},
-            "friendlyName": "Toaster",
-            "manufacturerInfo": {
-                "manufacturerName": "LIFX",
-                "modelName": "Outlet",
-                "hwVersion": "v1 US outlet",
-                "swVersion": "3.03.11"
-            },
-            "deviceContext" : {
-                "roomName": "Living Room",
-                "groups": ["Hall Lights"]
-            },
-            "deviceHandlerType": "<DEVICE-PROFILE-ID>"
-            }
+            i.to_discovery_dict() for i in devices_list
         ]
-        }
-    result = send_req("una_url", data=dumps(message)).json()
-    return result, 200
+    }
+    result = send_req("una_url", data=dumps(message))
+    return result.json(), result.status_code
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)  # Puerto diferente a tu bridge
+    if os.path.exists(file_configuration_server):
+        read_conf_file(file_configuration_server)
+    app.run(host='0.0.0.0', port=port)  # Puerto diferente a tu bridge
