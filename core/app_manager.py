@@ -119,7 +119,7 @@ class AppManager:
 
         # Iniciar sincronización
         logger.info("\n5. Iniciando sincronización...")
-        self.device_manager.start_sync(interval=30)
+        self.device_manager.start_sync(interval=10)
 
         # Iniciar HAP en hilo separado
         logger.info("\n6. Iniciando HomeKit en hilo separado...")

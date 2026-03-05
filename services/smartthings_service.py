@@ -11,6 +11,7 @@ from requests import post as send_req
 from uuid import uuid4
 import configparser
 import time
+from config import config
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class SmartThingsService:
 
         # Configuración
         self.config_parser = configparser.ConfigParser()
-        self.config_parser.read('./.smarthome/config.conf')
+        self.config_parser.read(config.CONFIG_FILE)
 
         # Credenciales
         self.credentials = {}
@@ -49,18 +50,13 @@ class SmartThingsService:
         # Configuración de Flask
         self._host = self.config_parser.get('SMARTTHINGS', 'host', fallback='0.0.0.0')
         self._port = self.config_parser.getint('SMARTTHINGS', 'port', fallback=5001)
-        self._cred_file = self.config_parser.get('SMARTTHINGS', 'credentials_file',
-                                                  fallback='smrtthingsSettings.json')
+        self._cred_file = self.config_parser.get('SMARTTHINGS', 'credentials_file', fallback='./.smarthome/smartthingsSettings.json')
 
         # Credenciales de cliente
-        self.my_client_id = self.config_parser.get('SMARTTHINGS', 'my_client_id',
-                                                   fallback='')
-        self.my_client_secret = self.config_parser.get('SMARTTHINGS', 'my_client_secret',
-                                                       fallback='')
-        self.st_client_id = self.config_parser.get('SMARTTHINGS', 'st_client_id',
-                                                   fallback='')
-        self.st_client_secret = self.config_parser.get('SMARTTHINGS', 'st_client_secret',
-                                                       fallback='')
+        self.my_client_id = self.config_parser.get('SMARTTHINGS', 'my_client_id', fallback='')
+        self.my_client_secret = self.config_parser.get('SMARTTHINGS', 'my_client_secret', fallback='')
+        self.st_client_id = self.config_parser.get('SMARTTHINGS', 'St_Client_Id', fallback='')
+        self.st_client_secret = self.config_parser.get('SMARTTHINGS', 'St_Client_Secret', fallback='')
 
     def initialize(self):
         """Inicializar el servicio SmartThings"""

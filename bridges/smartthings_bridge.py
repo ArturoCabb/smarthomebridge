@@ -19,7 +19,7 @@ class SmartThingsBridge:
     Traduce estados de dispositivos a accesorios SMARTTHINGS.
     """
 
-    CONFIG_FILE = ".smarthome/smartthings_device_conf.json"
+    CONFIG_FILE = "./.smarthome/smartthings_device_conf.json"
 
     def __init__(self, device_manager: DeviceManager, smartthings_service):
         self.device_manager = device_manager

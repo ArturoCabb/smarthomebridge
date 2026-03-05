@@ -5,6 +5,7 @@ from dataclasses import dataclass
 class Config:
     CONFIG_DIR = Path('./.smarthome/')
     CONFIG_FILE = CONFIG_DIR / 'config.conf'
+    SMARTTHINGS_CONFIG_FILE = CONFIG_DIR / 'smartthings_device_conf.json'
 
     def __post_init__(self):
         # Crear directorios si no existen
@@ -32,7 +33,7 @@ my_client_secret = TU_CLIENT_SECRET
 endpoint_app_id = TU_ENDPOINT_ID
 st_client_id = TU_ST_CLIENT_ID
 st_client_secret = TU_ST_CLIENT_SECRET
-credentials_file = smarthome/smrtthingsSettings.json
+credentials_file = smartthingsSettings.json
 
 [LG]
 access_token = TU_ACCESS_TOKEN_AQUI
