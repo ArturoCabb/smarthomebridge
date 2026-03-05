@@ -29,7 +29,7 @@ class SmartThingsService:
 
         # Configuración
         self.config_parser = configparser.ConfigParser()
-        self.config_parser.read('.smarthome/config.conf')
+        self.config_parser.read('./.smarthome/config.conf')
 
         # Credenciales
         self.credentials = {}
@@ -343,7 +343,13 @@ class SmartThingsService:
                 }}
             ]
 
-            with open(self._cred_file, 'w') as f:
+            # make sure parent directory exists
+            cred_path = Path(self._cred_file)
+            if cred_path.parent and not cred_path.parent.exists():
+                cred_path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Creada carpeta de credenciales: {cred_path.parent}")
+
+            with open(cred_path, 'w') as f:
                 json.dump(creds, f, indent=2)
 
             logger.info("Credenciales guardadas")
