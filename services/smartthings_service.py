@@ -10,6 +10,7 @@ from flask import Flask, request, render_template_string, redirect, jsonify
 from requests import post as send_req
 from uuid import uuid4
 import configparser
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ class SmartThingsService:
         self.callback_urls = {}
         self.access_token = ""
         self.refresh_token = ""
+        # token expiry info (segundos desde obtención)
+        self.expires_in: int = 0
+        self.token_obtained_at: float = 0.0
 
         # Flask app
         self.app = Flask(__name__)
@@ -89,6 +93,8 @@ class SmartThingsService:
                     callback_auth = creds_list[3].get('callbackAuthentication', {})
                     self.access_token = callback_auth.get('accessToken', '')
                     self.refresh_token = callback_auth.get('refreshToken', '')
+                    self.expires_in = callback_auth.get('expiresIn', 0) or 0
+                    self.token_obtained_at = callback_auth.get('obtainedAt', 0.0) or 0.0
 
                 logger.info("Credenciales cargadas desde archivo")
         except Exception as e:
@@ -278,6 +284,9 @@ class SmartThingsService:
                 callback_auth = response.get('callbackAuthentication', {})
                 self.access_token = callback_auth.get('accessToken', '')
                 self.refresh_token = callback_auth.get('refreshToken', '')
+                # extraer expiración si viene
+                self.expires_in = response.get('expiresIn', callback_auth.get('expiresIn', 0)) or 0
+                self.token_obtained_at = time.time()
                 logger.info("Token de acceso obtenido")
         except Exception as e:
             logger.error(f"Error solicitando token de acceso: {e}")
@@ -285,7 +294,7 @@ class SmartThingsService:
     def _refresh_access_token(self) -> bool:
         """
         Renovar token de acceso usando el refresh token.
-        Se llama cuando el access token expira (401/403 responses).
+        Se llama cuando el access token expira (401/403 responses) o de forma proactiva.
 
         Returns:
             True si se renovó exitosamente, False si falló
@@ -320,6 +329,8 @@ class SmartThingsService:
                 callback_auth = response.get('callbackAuthentication', {})
                 self.access_token = callback_auth.get('accessToken', '')
                 self.refresh_token = callback_auth.get('refreshToken', '')
+                self.expires_in = response.get('expiresIn', callback_auth.get('expiresIn', 0)) or 0
+                self.token_obtained_at = time.time()
                 self._save_credentials()
                 logger.info("Token de acceso renovado exitosamente")
                 return True
@@ -339,7 +350,9 @@ class SmartThingsService:
                 {"callbackUrls": self.callback_urls},
                 {"callbackAuthentication": {
                     "accessToken": self.access_token,
-                    "refreshToken": self.refresh_token
+                    "refreshToken": self.refresh_token,
+                    "expiresIn": self.expires_in,
+                    "obtainedAt": self.token_obtained_at
                 }}
             ]
 
@@ -355,6 +368,13 @@ class SmartThingsService:
             logger.info("Credenciales guardadas")
         except Exception as e:
             logger.error(f"Error guardando credenciales: {e}")
+
+    def _token_expired(self) -> bool:
+        """Return True if the currently held access token appears expired."""
+        if self.expires_in <= 0 or self.token_obtained_at <= 0:
+            return False
+        # consider a small safety margin
+        return time.time() > self.token_obtained_at + self.expires_in - 60
 
     def add_accessory(self, device_id: str, accessory):
         """

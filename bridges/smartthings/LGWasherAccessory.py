@@ -144,7 +144,7 @@ class LGWasherAccessory:
         Send device info formated to function handle_device_discovered()
         """
         return {
-            "externalDeviceId": "Lavadora LG de casa",
+            "externalDeviceId": self.external_device_id,
             "states": [
                 {
                     "component": "main",
