@@ -57,8 +57,6 @@ jobs:
     steps:
       - name: Update machine
         run: sudo apt update
-      - name: Agregar una pausa para que se vea reflejada los nuevos cambios de la imagen
-        run: sleep 60s
       - name: Checkout the repository
         uses: actions/checkout@v4
         with:
