@@ -9,11 +9,12 @@ import configparser
 import os
 
 app = Flask(__name__)
-file_configuration_server = "smrtthingsSettings.json" # Este es la variable de la ruta de configuracion que si se mete el codigo de este archivo en una clase, esta variable se debe poder asignar valor
+file_configuration_server = "./.smarthome/smartthingsSettings.json" # Este es la variable de la ruta de configuracion que si se mete el codigo de este archivo en una clase, esta variable se debe poder asignar valor
+devies_config_file = "./.smarthome/smartthings_device_conf.json" # Este es la variable de la ruta de configuracion que si se mete el codigo de este archivo en una clase, esta variable se debe poder asignar valor
 port = 5001 # Este es el puerto del servidor web que si se mete el codigo de este archivo en una clase, esta variable se debe poder asignar valor
 # Almacén simple de códigos (en producción usa BD)
 read_config = configparser.ConfigParser()
-read_config.read("config.conf")
+read_config.read("./.smarthome/config.conf")
 my_client_id = read_config.get("SMARTTHINGS", "my_client_id")
 my_client_secret = read_config.get("SMARTTHINGS", "my_client_secret")
 Endpoint_App_Id = read_config.get("SMARTTHINGS", "Endpoint_App_Id")
@@ -25,23 +26,19 @@ callbackUrlsstateCallback = ""
 token_from_smartthings = ""
 refresh_token_sesion_smartthings = ""
 
-def save_shake(data, file_name = "smrtthingsSettings.json"):
-    with open(file_name, "w+") as file:
+def save_shake(data):
+    with open(file_configuration_server, "w+") as file:
         file.write(dumps(data, indent=2))
 
-def read_conf_file(file_name = "smrtthingsSettings.json"):
-    global code
-    global callbackUrlsoauthToken
-    global callbackUrlsstateCallback
-    global token_from_smartthings
-    global refresh_token_sesion_smartthings
-    with open(file_name, "r") as file:
+def read_conf_file():
+    with open(file_configuration_server, "r") as file:
         d = loads(file.read())
         code = d[1].get("callbackAuthentication").get("code")
         callbackUrlsoauthToken = d[2].get("callbackUrls").get("oauthToken")
         callbackUrlsstateCallback = d[2].get("callbackUrls").get("stateCallback")
         token_from_smartthings = d[3].get("callbackAuthentication").get("accessToken")
         refresh_token_sesion_smartthings = d[3].get("callbackAuthentication").get("refreshToken")
+
 
 # --- Flujo de Autorización ---
 @app.route('/oauth/login', methods=['GET', 'POST'])
@@ -127,8 +124,8 @@ def target_endpoint():
     if operatin_type == "discoveryRequest":
         respuesta = handle_device_discovered(request_id)
     elif operatin_type == "stateRefreshRequest":
-        devicess = data.get("devices")
-        respuesta = state_refresh_request(request_id, devicess)
+        devicess= data.get("devices")
+        respuesta = state_refresh_request(request_id)
     elif operatin_type == "commandRequest":
         # TODO: Aqui hay que validar el token
         print("-"*10 + f" Respuesta recibida para {operatin_type} " + "-"*10)
@@ -145,13 +142,13 @@ def target_endpoint():
         code = data.get("callbackAuthentication").get("code")
         callbackUrlsoauthToken = data.get("callbackUrls").get("oauthToken")
         callbackUrlsstateCallback = data.get("callbackUrls").get("stateCallback")
-        rr = send_token_request()
+        rr = send_token_request()[0]
         datos = [data.get("authentication"), data.get("callbackAuthentication"), data.get("callbackUrls"), rr.get("callbackAuthentication")]
         save_shake(datos)
         print("-"*50)
     return respuesta, 200
 
-def handle_device_discovered(request_id, devices_list: list):
+def handle_device_discovered(request_id):
     result = {
         "headers": {
             "schema": "st-schema",
@@ -161,12 +158,29 @@ def handle_device_discovered(request_id, devices_list: list):
         },
         "requestGrantCallbackAccess": True,
         "devices": [
-            i.to_discovery_dict() for i in devices_list
+            {
+       "externalDeviceId": "partner-device-id-1",
+       "deviceCookie": {"updatedcookie": "old or new value"},
+       "friendlyName": "Kitchen Bulb",
+       "manufacturerInfo": {
+          "manufacturerName": "LIFX",
+          "modelName": "A19 Color Bulb",
+          "hwVersion": "v1 US bulb",
+          "swVersion": "23.123.231"
+       },
+       "deviceContext" : {
+          "roomName": "Kitchen",
+          "groups": ["Kitchen Lights", "House Bulbs"],
+          "categories": ["light", "switch"]
+       },
+       "deviceHandlerType": "c2c-rgbw-color-bulb",
+       "deviceUniqueId": "unique identifier of device"
+    },
         ]
     }
     return result
 
-def state_refresh_request(request_id, devices_list: list):
+def state_refresh_request(request_id):
     result = {
         "headers": {
             "schema": "st-schema",
@@ -175,12 +189,53 @@ def state_refresh_request(request_id, devices_list: list):
             "requestId": request_id
         },
         "deviceState": [
-            i.state_refresh_request() for i in devices_list
+            {
+      "externalDeviceId": "partner-device-id-1",
+      "deviceCookie": {},
+      "states": [
+        {
+          "component": "main",
+          "capability": "st.healthCheck",
+          "attribute": "healthStatus",
+          "value": "online"
+        },
+        {
+          "component": "main",
+          "capability": "st.switch",
+          "attribute": "switch",
+          "value": "on"
+        },
+        {
+          "component": "main",
+          "capability": "st.switchLevel",
+          "attribute": "level",
+          "value": 80
+        },
+        {
+          "component": "main",
+          "capability": "st.colorControl",
+          "attribute": "hue",
+          "value": 0
+        },
+        {
+          "component": "main",
+          "capability": "st.colorControl",
+          "attribute": "saturation",
+          "value": 0          
+        },
+        {
+          "component": "main",
+          "capability": "st.colorTemperature",
+          "attribute": "colorTemperature",
+          "value": 3500
+        }        
+      ]
+    }
         ]
     }
     return result
 
-def command_request(request_id, devices_list: list):
+def command_request(request_id):
     # Este regresa el estado del dispositivo
     result = {
         "headers": {
@@ -190,7 +245,30 @@ def command_request(request_id, devices_list: list):
             "requestId": request_id
         },
         "deviceState": [
-            i.to_command_request() for i in devices_list
+            {
+      "externalDeviceId": "partner-device-id-1",
+      "deviceCookie": {},
+      "states": [
+        {
+          "component": "main",
+          "capability": "st.colorControl",
+          "attribute": "hue",
+          "value": 0.8333333333333334
+        },
+        {
+          "component": "main",
+          "capability": "st.switch",
+          "attribute": "switch",
+          "value": "off"
+        },
+        {
+          "component": "main",
+          "capability": "st.switchLevel",
+          "attribute": "level",
+          "value": 80
+        }
+      ]
+    }
         ]
     }
     return result
@@ -256,7 +334,19 @@ def send_device_status(devices_list: list):
         "token": token_from_smartthings
     },
     "deviceState": [
-        i.send_device_status() for i in devices_list
+        {
+            "externalDeviceId": "partner-device-id-1",
+            "states": [
+                {
+                    "component": "main",
+                    "capability": "st.button",
+                    "attribute": "button",
+                    "value": "pushed",
+                    "timestamp": 1568248946010,
+                    "stateChange": "Y"
+                }
+            ]
+        }
     ]
 }
     result = send_req(callbackUrlsstateCallback, data=message)
@@ -275,7 +365,22 @@ def discovery_callback(devices_list: list):
             "token": token_from_smartthings
         },
         "devices": [
-            i.to_discovery_dict() for i in devices_list
+            {
+      "externalDeviceId": "partner-device-id-1",
+      "deviceCookie": {"updatedcookie": "old or new value"},
+      "friendlyName": "Kitchen Bulb",
+      "manufacturerInfo": {
+        "manufacturerName": "LIFX",
+        "modelName": "A19 Color Bulb",
+        "hwVersion": "v1 US bulb",
+        "swVersion": "23.123.231"
+      },
+      "deviceContext" : {
+        "roomName": "Kitchen",
+        "groups": ["Kitchen Lights", "House Bulbs"]
+      },
+      "deviceHandlerType": "c2c-rgbw-color-bulb"
+  }
         ]
     }
     result = send_req("una_url", data=dumps(message))
@@ -284,5 +389,5 @@ def discovery_callback(devices_list: list):
 
 if __name__ == '__main__':
     if os.path.exists(file_configuration_server):
-        read_conf_file(file_configuration_server)
+        read_conf_file()
     app.run(host='0.0.0.0', port=port)  # Puerto diferente a tu bridge

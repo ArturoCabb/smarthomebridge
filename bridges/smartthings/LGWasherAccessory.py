@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional
 import logging
+from datetime import datetime, timedelta
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,7 @@ class LGWasherAccessory:
     sw_version: str = "0.0.1"
 
     # Device context
-    room_name: str = "cuarto de lavado"
+    room_name: str = "Cuarto de Lavado"
     groups: List[str] = field(default_factory=lambda: ["washer"])
     categories: List[str] = field(default_factory=lambda: ["washer"])
 
@@ -55,13 +57,16 @@ class LGWasherAccessory:
     device_cookie: Dict = field(default_factory=dict)
 
     # State
-    health_status: HealthStatus = HealthStatus.ONLINE
-    completion_time: str = "2022-09-27 18:00:00.000"
+    health_status: HealthStatus = HealthStatus.OFFLINE
+    completion_time: str = "2026-03-05T19:00:00.000Z"
     machine_state: MachineState = MachineState.STOP
     washer_job_state: WasherJobState = WasherJobState.NONE
 
     # Device manager (inyectado desde el bridge)
     device_manager: Optional[object] = field(default=None, repr=False, init=False)
+
+    # SmartThings service (inyectado desde el bridge)
+    smartthings_service: Optional[object] = field(default=None, repr=False, init=False)
 
 
     def to_discovery_dict(self) -> Dict:
@@ -141,8 +146,10 @@ class LGWasherAccessory:
     
     def send_device_status(self):
         """
-        Send device info formated to function handle_device_discovered()
+        Send device status formatted for stateCallback interaction
+        Returns device state with timestamp (milliseconds) as per SmartThings spec
         """
+        timestamp = int(time.time() * 1000)  # Current time in milliseconds
         return {
             "externalDeviceId": self.external_device_id,
             "states": [
@@ -151,6 +158,7 @@ class LGWasherAccessory:
                     "capability": "st.healthCheck",
                     "attribute": "healthStatus",
                     "value": self.health_status.value,
+                    "timestamp": timestamp,
                     "stateChange": "Y",
                 },
                 {
@@ -158,6 +166,7 @@ class LGWasherAccessory:
                     "capability": "st.washerOperatingState",
                     "attribute": "completionTime",
                     "value": self.completion_time,
+                    "timestamp": timestamp,
                     "stateChange": "Y",
                 },
                 {
@@ -165,6 +174,7 @@ class LGWasherAccessory:
                     "capability": "st.washerOperatingState",
                     "attribute": "machineState",
                     "value": self.machine_state.value,
+                    "timestamp": timestamp,
                     "stateChange": "Y",
                 },
                 {
@@ -172,6 +182,7 @@ class LGWasherAccessory:
                     "capability": "st.washerOperatingState",
                     "attribute": "washerJobState",
                     "value": self.washer_job_state.value,
+                    "timestamp": timestamp,
                     "stateChange": "Y",
                 },
             ]
@@ -187,44 +198,98 @@ class LGWasherAccessory:
         if not device_state or not hasattr(device_state, 'state'):
             logger.warning(f"DeviceState inválido para {self.external_device_id}")
             return
-
-        state = device_state.state
+        
+        state = device_state.state.get("state", "POWER_OFF").upper()
 
         # Actualizar health_status según conectividad del dispositivo
-        if device_state.online:
-            self.health_status = HealthStatus.ONLINE
-        else:
+        if state == "POWER_OFF":
             self.health_status = HealthStatus.OFFLINE
+        else:
+            self.health_status = HealthStatus.ONLINE
 
         # Mapear estado del dispositivo a machine_state
-        device_operation_state = state.get('state', '').upper()
-        if device_operation_state in ('RUN', 'WASH', 'RINSING', 'SPINNING'):
+        device_operation_state = device_state.state.get("state").upper()  # Ejemplo: MAIN, WASH, RINSING, etc.
+        if device_operation_state in ('INITIAL', 'DETECTING', 'SOAKING','RUNNING', 'DRYING', 'RINSING', 'SPINNING', 'COOL_DOWN', 'REFRESHING', 'STEAM_SOFTENING', 'SMART_GRID_RUN', 'ADD_DRAIN', 'DETERGENT_AMOUNT', 'PREWASH', 'SHOES_MODULE', 'PROOFING', 'DISPENSING', 'SOFTENING', 'CHECKING_TURBIDITY', 'CHANGE_CONDITION', 'DISPLAY_LOADSIZE', 'FROZEN_PREVENT_INITIAL', 'FROZEN_PREVENT_RUNNING'):
             self.machine_state = MachineState.RUN
-        elif device_operation_state == 'PAUSE':
+        elif device_operation_state in ('PAUSE', 'RESERVED', 'RINSE_HOLD', 'ERROR', 'FROZEN_PREVENT_PAUSE'):
             self.machine_state = MachineState.PAUSE
         else:  # POWER_OFF, STOP, etc.
             self.machine_state = MachineState.STOP
 
         # Mapear estado específico del lavado a washer_job_state
-        # Esta lógica depende de cómo el plugin retorna el estado
-        job_state_str = state.get('washer_job_state', 'none').lower()
+        # LG devuelve: "COOL_DOWN", "DRYING", "FINISH", "PREWASH", "RINSING", "SPINNING", "RUNNING", "DETECTING"
+        # Estos nombres coinciden con los nombres de las variables en WasherJobState
+        job_state_str = device_state.state.get("state", "POWER_OFF").upper()
+        
+        # Mapeo directo de estado LG a nombre de enum WasherJobState
+        lg_to_enum_name = {
+            "COOL_DOWN": "COOLING",
+            "DRYING": "DRYING",
+            "FINISH": "FINISH",
+            "END": "FINISH",
+            "PREWASH": "PRE_WASH",
+            "RINSING": "RINSE",
+            "SPINNING": "SPIN",
+            "RUNNING": "WASH",
+            "DETECTING": "WEIGHT_SENSING",
+            "INITIAL": "WEIGHT_SENSING",
+            "SOAKING": "WASH",
+            "REFRESHING": "AIR_WASH",
+            "STEAM_SOFTENING": "AIR_WASH",
+            "SMART_GRID_RUN": "WASH",
+            "ADD_DRAIN": "WASH",
+            "DETERGENT_AMOUNT": "WASH",
+            "SHOES_MODULE": "WASH",
+            "PROOFING": "WASH",
+            "DISPENSING": "WASH",
+            "SOFTENING": "WASH",
+            "CHECKING_TURBIDITY": "WEIGHT_SENSING",
+            "CHANGE_CONDITION": "WASH",
+            "DISPLAY_LOADSIZE": "WEIGHT_SENSING",
+            "FROZEN_PREVENT_INITIAL": "FREEZE_PROTECTION",
+            "FROZEN_PREVENT_RUNNING": "FREEZE_PROTECTION",
+            "FROZEN_PREVENT_PAUSE": "FREEZE_PROTECTION",
+            "PAUSE": "NONE",
+            "RESERVED": "NONE",
+            "RINSE_HOLD": "NONE",
+            "ERROR": "NONE",
+            "POWER_OFF": "NONE",
+            "STOP": "NONE",
+        }
+        
         try:
-            self.washer_job_state = WasherJobState(job_state_str)
-        except ValueError:
+            enum_name = lg_to_enum_name.get(job_state_str, "NONE")
+            self.washer_job_state = WasherJobState[enum_name]  # ✅ Acceso por nombre
+            #logger.info(f"LG state '{job_state_str}' → Enum name '{enum_name}' → SmartThings value '{self.washer_job_state.value}'")
+        except KeyError:
             self.washer_job_state = WasherJobState.NONE
-            logger.debug(f"Estado de trabajo desconocido: {job_state_str}")
+            logger.warning(f"Estado de trabajo desconocido: {job_state_str}")
 
         # Actualizar tiempo de completación (si está disponible)
-        if 'remain_time_m' in state:
-            remain_minutes = state.get('remain_time_m', 0)
-            # Convertir minutos a formato HH:MM:SS (aproximado)
-            hours = remain_minutes // 60
-            minutes = remain_minutes % 60
-            self.completion_time = f"{hours:02d}:{minutes:02d}:00"
+        if 'remain_time_m' in device_state.state:
+            remain_minutes = device_state.state.get('remain_time_m', 0)
+            
+            # Obtener hora actual
+            now = datetime.now()
+            
+            # Calcular la hora de finalización: ahora + remain_minutes
+            # datetime.timedelta maneja automáticamente el cambio de día
+            # Ejemplo: 23:59 + 2 minutos = 00:01 del siguiente día
+            completion_datetime = now + timedelta(minutes=remain_minutes)
+            
+            # Convertir a formato ISO 8601: YYYY-MM-DDTHH:MM:SS.sssZ
+            self.completion_time = completion_datetime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
-        logger.info(f"Estado actualizado para {self.external_device_id}: "
-                   f"machine_state={self.machine_state.value}, "
-                   f"health_status={self.health_status.value}")
+        # Notificar a SmartThings del cambio de estado
+        if self.smartthings_service:
+            try:
+                self.smartthings_service.send_device_status([self])
+            except Exception as e:
+                logger.error(f"Error sending device status: {e}")
+                try:
+                    self.smartthings_service.refresh_token()
+                except Exception as e2:
+                    logger.error(f"Error refreshing token: {e2}")
 
     def set_device_manager(self, device_manager):
         """
@@ -234,6 +299,15 @@ class LGWasherAccessory:
             device_manager: Instancia de DeviceManager para enviar comandos
         """
         self.device_manager = device_manager
+
+    def set_smartthings_service(self, smartthings_service):
+        """
+        Establecer el smartthings_service (inyección de dependencia postinit).
+
+        Args:
+            smartthings_service: Instancia de SmartThingsService para notificaciones
+        """
+        self.smartthings_service = smartthings_service
 
     def translate_smartthings_command(self, st_command: Dict) -> Optional[Dict]:
         """
@@ -283,7 +357,7 @@ class LGWasherAccessory:
         logger.warning(f"No se puede traducir comando SmartThings: {st_command}")
         return None
 
-    def handle_smartthings_command(self, st_command: Dict) -> bool:
+    def handle_smartthings_command(self, st_command: Dict):
         """
         Manejar comando recibido desde SmartThings.
         Traduce el comando a formato LG y lo envía al dispositivo.
@@ -321,8 +395,8 @@ class LGWasherAccessory:
                 logger.info(f"Comando enviado exitosamente a {self.external_device_id}")
             else:
                 logger.error(f"Error enviando comando a {self.external_device_id}")
-
-            return result
+            self.to_command_request()
+            return self.to_command_request()
 
         except Exception as e:
             logger.error(f"Error en handle_smartthings_command: {e}")

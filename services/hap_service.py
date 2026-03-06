@@ -51,13 +51,13 @@ class HAPService:
             accessory: Objeto accesorio HAP
         """
         if device_id in self.accessories:
-            logger.warning(f"Accesorio ya existe: {device_id}")
+            logger.warning(f"Accesorio ya existe en hap service: {device_id}")
             return False
         
         self.bridge.add_accessory(accessory)
         self.accessories[device_id] = accessory
         
-        logger.info(f"Accesorio agregado: {accessory.display_name}")
+        logger.info(f"Accesorio agregado a hap service: {accessory.display_name}")
         return True
     
     def remove_accessory(self, device_id: str):

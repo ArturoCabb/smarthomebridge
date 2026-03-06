@@ -5,6 +5,7 @@ import logging
 from typing import Dict
 from bridges.homekit.LGWasherAccessory import LGWasherAccessory
 from core.device_manager import DeviceManager, DeviceState
+from services.hap_service import HAPService
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class HAPBridge:
     Traduce estados de dispositivos a accesorios HAP.
     """
     
-    def __init__(self, device_manager: DeviceManager, hap_service):
+    def __init__(self, device_manager: DeviceManager, hap_service: HAPService):
         self.device_manager = device_manager
         self.hap_service = hap_service
         
@@ -91,6 +92,6 @@ class HAPBridge:
         
         if accessory and hasattr(accessory, 'update_from_device_state'):
             try:
-                accessory.update_from_device_state(device_state)
+                accessory.update_from_device_state(device_state) # Esta es la funcion que se llmam a que le dice al servicio hap que en telefono pinte el estado del dispositivo
             except Exception as e:
                 pass
