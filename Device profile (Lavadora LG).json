@@ -1,0 +1,156 @@
+{
+  "deviceProfile": {
+    "id": "e51cef11-d028-43b2-8a33-3bfddbe25392",
+    "name": "Lavadora LG",
+    "metadata": {
+      "deviceType": "Washer",
+      "vid": "1709b7e3-2acc-4d21-a076-b8ee0116c044",
+      "mnmn": "universeclever08278",
+      "ocfDeviceType": "oic.d.washer",
+      "deviceTypeId": "Washer",
+      "presentationId": "universeclever08278.1709b7e3-2acc-4d21-a076-b8ee0116c044",
+      "integrationType": "cloud",
+      "manufacturerName": "universeclever08278",
+      "mainState": "main~washerOperatingState~1",
+      "ocfSpecVer": "core 1.1.0",
+      "resourceType": "oic.d.washer",
+      "mainAction": "main~washerOperatingState~1"
+    },
+    "migrationStatus": "NOT_MIGRATED",
+    "status": "DEVELOPMENT",
+    "preferences": [],
+    "components": [
+      {
+        "label": "Main",
+        "id": "main",
+        "capabilities": [
+          {
+            "id": "healthCheck",
+            "version": 1,
+            "optional": false,
+            "ephemeral": false
+          },
+          {
+            "id": "refresh",
+            "version": 1,
+            "optional": false,
+            "ephemeral": false
+          },
+          {
+            "id": "washerOperatingState",
+            "version": 1,
+            "optional": false,
+            "ephemeral": false
+          }
+        ],
+        "categories": [
+          {
+            "name": "Washer",
+            "categoryType": "manufacturer"
+          }
+        ],
+        "optional": false
+      }
+    ]
+  },
+  "deviceConfiguration": {
+    "mnmn": "universeclever08278",
+    "vid": "1709b7e3-2acc-4d21-a076-b8ee0116c044",
+    "version": "0.0.1",
+    "type": "profile",
+    "dashboard": {
+      "states": [
+        {
+          "component": "main",
+          "capability": "washerOperatingState",
+          "version": 1,
+          "idx": 0,
+          "group": "main",
+          "values": [],
+          "composite": false
+        }
+      ],
+      "actions": [
+        {
+          "component": "main",
+          "capability": "washerOperatingState",
+          "version": 1,
+          "idx": 0,
+          "group": "main"
+        }
+      ],
+      "basicPlus": []
+    },
+    "detailView": [
+      {
+        "component": "main",
+        "capability": "healthCheck",
+        "version": 1,
+        "values": [],
+        "patch": []
+      },
+      {
+        "component": "main",
+        "capability": "refresh",
+        "version": 1,
+        "values": [],
+        "patch": []
+      },
+      {
+        "component": "main",
+        "capability": "washerOperatingState",
+        "version": 1,
+        "values": [],
+        "patch": []
+      }
+    ],
+    "automation": {
+      "conditions": [
+        {
+          "component": "main",
+          "capability": "healthCheck",
+          "version": 1,
+          "values": [],
+          "patch": [],
+          "exclusion": []
+        },
+        {
+          "component": "main",
+          "capability": "washerOperatingState",
+          "version": 1,
+          "values": [],
+          "patch": [],
+          "exclusion": []
+        }
+      ],
+      "actions": [
+        {
+          "component": "main",
+          "capability": "healthCheck",
+          "version": 1,
+          "values": [],
+          "patch": [],
+          "exclusion": []
+        },
+        {
+          "component": "main",
+          "capability": "refresh",
+          "version": 1,
+          "values": [],
+          "patch": [],
+          "exclusion": []
+        },
+        {
+          "component": "main",
+          "capability": "washerOperatingState",
+          "version": 1,
+          "values": [],
+          "patch": [],
+          "exclusion": []
+        }
+      ]
+    },
+    "presentationId": "1709b7e3-2acc-4d21-a076-b8ee0116c044",
+    "manufacturerName": "universeclever08278"
+  }
+}
