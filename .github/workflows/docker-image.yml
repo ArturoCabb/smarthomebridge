@@ -57,66 +57,66 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
 
-  deploy:
-    name: Production
-    runs-on: ubuntu-latest
-    # requiere que se haya completado el build
-    needs: build
-    env:
-      SSH_PRIVATE_KEY: ${{ secrets.SERVERSECRET }}
-      SSH_USERNAME: ${{ secrets.SERVERUSERNAME }}
-      SSH_SERVERIP: ${{ secrets.SERVERIP }}
-      SSH_PORT: ${{ secrets.SSHPORT }}
-      username: ${{ secrets.DOCKERUSER }}
-      password: ${{ secrets.DOCKERPASS }}
-    steps:
-      - name: Update machine
-        run: sudo apt update
-      - name: Checkout the repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: make ssh directory
-        run: |
-          mkdir -p ~/.ssh
-          ls
-      - name: Create ssh key file and change permissions
-        run: |
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/raspberryremoto
-          chmod 600 ~/.ssh/raspberryremoto
-      - name: Agregar servidor a lista de hosts conocidos
-        run: |
-          ssh-keyscan -p $SSH_PORT $SSH_SERVERIP >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-      - name: Probar conexion SSH
-        run: |
-          ssh -T -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP "echo 'SSH connection successful!'"
-      - name: Copiar compose.yaml al servidor
-        run: |
-          rsync -avz -e "ssh -p $SSH_PORT -i ~/.ssh/raspberryremoto -o StrictHostKeyChecking=no" \
-          ./compose.yaml \
-          $SSH_USERNAME@$SSH_SERVERIP:/home/remoto/public/compose.yaml
-      #- name: Desplegar en el servidor remoto
-      #  run: |
-      #    ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP "
-      #      docker login -u '$username' -p '$password' &&
-      #      docker pull arturocabb/testspersonales:controlSmartHome &&
-      #      docker compose -f ~/public/compose.yaml down &&
-      #      docker pull arturocabb/testspersonales:controlSmartHome &&
-      #      docker compose -f ~/public/compose.yaml pull &&
-      #      docker compose -f ~/public/compose.yaml up -d &&
-      #      docker logout
-      #    "
-      - name: Desplegar en el servidor remoto
-        run: |
-          ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP "
-            docker login -u '$username' -p '$password' &&
-            
-            docker compose -f ~/public/compose.yaml down &&
-            docker pull ghcr.io/arturocabb/smarthomebridge:latest &&
-            docker compose -f ~/public/compose.yaml pull &&
-            docker compose -f ~/public/compose.yaml up -d &&
-            docker logout
-          "
+  #deploy:
+  #  name: Production
+  #  runs-on: ubuntu-latest
+  #  # requiere que se haya completado el build
+  #  needs: build
+  #  env:
+  #    SSH_PRIVATE_KEY: ${{ secrets.SERVERSECRET }}
+  #    SSH_USERNAME: ${{ secrets.SERVERUSERNAME }}
+  #    SSH_SERVERIP: ${{ secrets.SERVERIP }}
+  #    SSH_PORT: ${{ secrets.SSHPORT }}
+  #    #username: ${{ secrets.DOCKERUSER }}
+  #    #password: ${{ secrets.DOCKERPASS }}
+  #  steps:
+  #    - name: Update machine
+  #      run: sudo apt update
+  #    - name: Checkout the repository
+  #      uses: actions/checkout@v4
+  #      with:
+  #        fetch-depth: 0
+  #    - name: make ssh directory
+  #      run: |
+  #        mkdir -p ~/.ssh
+  #        ls
+  #    - name: Create ssh key file and change permissions
+  #      run: |
+  #        echo "$SSH_PRIVATE_KEY" > ~/.ssh/raspberryremoto
+  #        chmod 600 ~/.ssh/raspberryremoto
+  #    - name: Agregar servidor a lista de hosts conocidos
+  #      run: |
+  #        ssh-keyscan -p $SSH_PORT $SSH_SERVERIP >> ~/.ssh/known_hosts
+  #        chmod 600 ~/.ssh/known_hosts
+  #    - name: Probar conexion SSH
+  #      run: |
+  #        ssh -T -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP "echo 'SSH connection successful!'"
+  #    - name: Copiar compose.yaml al servidor
+  #      run: |
+  #        rsync -avz -e "ssh -p $SSH_PORT -i ~/.ssh/raspberryremoto -o StrictHostKeyChecking=no" \
+  #        ./compose.yaml \
+  #        $SSH_USERNAME@$SSH_SERVERIP:/home/remoto/public/compose.yaml
+  #    #- name: Desplegar en el servidor remoto
+  #    #  run: |
+  #    #    ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP "
+  #    #      docker login -u '$username' -p '$password' &&
+  #    #      docker pull arturocabb/testspersonales:controlSmartHome &&
+  #    #      docker compose -f ~/public/compose.yaml down &&
+  #    #      docker pull arturocabb/testspersonales:controlSmartHome &&
+  #    #      docker compose -f ~/public/compose.yaml pull &&
+  #    #      docker compose -f ~/public/compose.yaml up -d &&
+  #    #      docker logout
+  #    #    "
+  #    - name: Desplegar en el servidor remoto
+  #      run: |
+  #        ssh -o StrictHostKeyChecking=no -p $SSH_PORT -i ~/.ssh/raspberryremoto $SSH_USERNAME@$SSH_SERVERIP "
+  #          docker login -u '$username' -p '$password' &&
+  #          
+  #          docker compose -f ~/public/compose.yaml down &&
+  #          docker pull ghcr.io/arturocabb/smarthomebridge:latest &&
+  #          docker compose -f ~/public/compose.yaml pull &&
+  #          docker compose -f ~/public/compose.yaml up -d &&
+  #          docker logout
+  #        "
           
 
