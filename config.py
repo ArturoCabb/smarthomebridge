@@ -39,6 +39,11 @@ credentials_file = smartthingsSettings.json
 access_token = TU_ACCESS_TOKEN_AQUI
 message_id = TU_MESSAGE_ID
 client_id = TU_CLIENT_ID
+
+[TELEGRAM]
+bot_token = TU_BOT_TOKEN
+chat_id = TU_CHAT_ID
+
 """
         with open(self.CONFIG_FILE, 'w') as f:
             f.write(template)
