@@ -284,17 +284,6 @@ class LGWasherAccessory:
             # Convertir a formato ISO 8601: YYYY-MM-DDTHH:MM:SS.sssZ
             self.completion_time = completion_datetime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
-        # Notificar a SmartThings del cambio de estado
-        if self.smartthings_service:
-            try:
-                self.smartthings_service.send_device_status([self])
-            except Exception as e:
-                logger.error(f"Error sending device status: {e}")
-                try:
-                    self.smartthings_service.refresh_token()
-                except Exception as e2:
-                    logger.error(f"Error refreshing token: {e2}")
-
     def set_device_manager(self, device_manager):
         """
         Establecer el device_manager (inyección de dependencia postinit).
@@ -313,6 +302,7 @@ class LGWasherAccessory:
         """
         self.smartthings_service = smartthings_service
 
+    # TODO: REVIEW y corregir
     def translate_smartthings_command(self, st_command: Dict) -> Optional[Dict]:
         """
         Traducir comando de SmartThings a formato API LG.
@@ -361,6 +351,7 @@ class LGWasherAccessory:
         logger.warning(f"No se puede traducir comando SmartThings: {st_command}")
         return None
 
+    # TODO: Corregir
     def handle_smartthings_command(self, st_command: Dict):
         """
         Manejar comando recibido desde SmartThings.
@@ -405,4 +396,3 @@ class LGWasherAccessory:
         except Exception as e:
             logger.error(f"Error en handle_smartthings_command: {e}")
             return False
-
