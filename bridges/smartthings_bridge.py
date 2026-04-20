@@ -112,3 +112,14 @@ class SmartThingsBridge:
                 accessory.update_from_device_state(device_state) # Esta es la funcion que se llmam a que le dice al servicio hap que en telefono pinte el estado del dispositivo
             except Exception as e:
                 pass
+            
+            # Notificar a SmartThings del cambio de estado
+            if self.smartthings_service:
+                try:
+                    self.smartthings_service.send_device_status([accessory])
+                except Exception as e:
+                    logger.error(f"Error sending device status: {e}")
+                    try:
+                        self.smartthings_service.refresh_token()
+                    except Exception as e2:
+                        logger.error(f"Error refreshing token: {e2}")
