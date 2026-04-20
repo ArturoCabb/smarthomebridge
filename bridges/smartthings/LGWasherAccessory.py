@@ -144,6 +144,9 @@ class LGWasherAccessory:
             ],
         }
     
+    #TODO: Se tiene que agregar condiciones para que solo se envie el estado que cambio, no todo el estado del dispositivo cada vez,
+    # lo ideal será una bandera para cada sensor del dispositivo, así puede recordar cual era el estado anterior y usar un condicional
+    # que aagregue al payload solo el estado que cambió, esto es importante para evitar enviar estados innecesarios a SmartThings y optimizar la comunicación.
     def send_device_status(self):
         """
         Send device status formatted for stateCallback interaction
@@ -187,7 +190,8 @@ class LGWasherAccessory:
                 },
             ]
         }
-
+    
+    # TODO: REVIEW
     def update_from_device_state(self, device_state):
         """
         Actualizar el estado del accesorio desde un DeviceState del DeviceManager.
