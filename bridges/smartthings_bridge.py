@@ -68,7 +68,7 @@ class SmartThingsBridge:
         # Importar el accessory correspondiente
         if brand == 'lg' and 'washer' in device_type:
             print("Device id de LG para coincidir con del del accesorio para smartthings " + device_state.device_id)
-            smartthings_device_conf = open(self.smartthings_service.devies_config_file, "r")
+            smartthings_device_conf = open(self.smartthings_service.devies_config_file, "r", encoding="utf-8")
             dat_file = smartthings_device_conf.read()
             smartthings_device_conf.close()
             dat_file = loads(dat_file)
@@ -93,7 +93,7 @@ class SmartThingsBridge:
         
         # Agregar más tipos de dispositivos aquí
         
-        logger.warning(f"No hay accessory HAP para {brand} {device_type}")
+        logger.warning("No hay accessory HAP para %s %s", brand, device_type)
         return None
     
     def _on_device_state_changed(self, device_state: DeviceState):
@@ -118,8 +118,8 @@ class SmartThingsBridge:
                 try:
                     self.smartthings_service.send_device_status([accessory])
                 except Exception as e:
-                    logger.error(f"Error sending device status: {e}")
+                    logger.error("Error sending device status: %s", e)
                     try:
                         self.smartthings_service.refresh_token()
                     except Exception as e2:
-                        logger.error(f"Error refreshing token: {e2}")
+                        logger.error("Error refreshing token: %s", e2)
