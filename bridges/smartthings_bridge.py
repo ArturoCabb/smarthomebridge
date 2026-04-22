@@ -88,7 +88,6 @@ class SmartThingsBridge:
                         categories=device["categories"]
                     )
                     access.set_device_manager(self.device_manager)  # ✅ Inyectar el manager
-                    access.set_smartthings_service(self.smartthings_service)  # ✅ Inyectar el servicio
                     return access
         
         # Agregar más tipos de dispositivos aquí

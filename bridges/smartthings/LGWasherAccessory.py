@@ -35,7 +35,6 @@ class HealthStatus(str, Enum):
     ONLINE = "online"
     OFFLINE = "offline"
 
-@dataclass
 class LGWasherAccessory:
     # Device identity
     external_device_id: str
@@ -50,11 +49,11 @@ class LGWasherAccessory:
 
     # Device context
     room_name: str = "Cuarto de Lavado"
-    groups: List[str] = field(default_factory=lambda: ["washer"])
-    categories: List[str] = field(default_factory=lambda: ["washer"])
+    groups: List[str] = []
+    categories: List[str] = []
 
     # Device cookie (opaque para SmartThings)
-    device_cookie: Dict = field(default_factory=dict)
+    device_cookie: Dict = {}
 
     # State
     health_status: HealthStatus = HealthStatus.OFFLINE
@@ -63,10 +62,12 @@ class LGWasherAccessory:
     washer_job_state: WasherJobState = WasherJobState.NONE
 
     # Device manager (inyectado desde el bridge)
-    device_manager: Optional[object] = field(default=None, repr=False, init=False)
+    device_manager: Optional[object]
 
-    # SmartThings service (inyectado desde el bridge)
-    smartthings_service: Optional[object] = field(default=None, repr=False, init=False)
+    _last_health_status = ""
+    _last_completion_time = ""
+    _last_machine_state = ""
+    _last_washer_job_state = ""
 
 
     def to_discovery_dict(self) -> Dict:
@@ -144,18 +145,15 @@ class LGWasherAccessory:
             ],
         }
     
-    #TODO: Se tiene que agregar condiciones para que solo se envie el estado que cambio, no todo el estado del dispositivo cada vez,
-    # lo ideal será una bandera para cada sensor del dispositivo, así puede recordar cual era el estado anterior y usar un condicional
-    # que aagregue al payload solo el estado que cambió, esto es importante para evitar enviar estados innecesarios a SmartThings y optimizar la comunicación.
     def send_device_status(self):
         """
         Send device status formatted for stateCallback interaction
         Returns device state with timestamp (milliseconds) as per SmartThings spec
         """
         timestamp = int(time.time() * 1000)  # Current time in milliseconds
-        return {
-            "externalDeviceId": self.external_device_id,
-            "states": [
+        campos_a_agergar = []
+        if self._last_health_status != self.health_status.value:
+            campos_a_agergar.append(
                 {
                     "component": "main",
                     "capability": "st.healthCheck",
@@ -163,7 +161,10 @@ class LGWasherAccessory:
                     "value": self.health_status.value,
                     "timestamp": timestamp,
                     "stateChange": "Y",
-                },
+                }
+            )
+        if self._last_completion_time != self.completion_time:
+            campos_a_agergar.append(
                 {
                     "component": "main",
                     "capability": "st.washerOperatingState",
@@ -171,7 +172,10 @@ class LGWasherAccessory:
                     "value": self.completion_time,
                     "timestamp": timestamp,
                     "stateChange": "Y",
-                },
+                }
+            )
+        if self._last_machine_state != self.machine_state.value:
+            campos_a_agergar.append(
                 {
                     "component": "main",
                     "capability": "st.washerOperatingState",
@@ -179,7 +183,10 @@ class LGWasherAccessory:
                     "value": self.machine_state.value,
                     "timestamp": timestamp,
                     "stateChange": "Y",
-                },
+                }
+            )
+        if self._last_washer_job_state != self.washer_job_state.value:
+            campos_a_agergar.append(
                 {
                     "component": "main",
                     "capability": "st.washerOperatingState",
@@ -187,11 +194,13 @@ class LGWasherAccessory:
                     "value": self.washer_job_state.value,
                     "timestamp": timestamp,
                     "stateChange": "Y",
-                },
-            ]
+                }
+            )
+        return {
+            "externalDeviceId": self.external_device_id,
+            "states": campos_a_agergar
         }
     
-    # TODO: REVIEW
     def update_from_device_state(self, device_state):
         """
         Actualizar el estado del accesorio desde un DeviceState del DeviceManager.
@@ -208,17 +217,28 @@ class LGWasherAccessory:
         # Actualizar health_status según conectividad del dispositivo
         if state == "POWER_OFF":
             self.health_status = HealthStatus.OFFLINE
+            if self._last_health_status != self.health_status.value:
+                self._last_health_status = self.health_status.value
         else:
             self.health_status = HealthStatus.ONLINE
+            if self._last_health_status != self.health_status.value:
+                self._last_health_status = self.health_status.value
 
         # Mapear estado del dispositivo a machine_state
         device_operation_state = device_state.state.get("state").upper()  # Ejemplo: MAIN, WASH, RINSING, etc.
         if device_operation_state in ('INITIAL', 'DETECTING', 'SOAKING','RUNNING', 'DRYING', 'RINSING', 'SPINNING', 'COOL_DOWN', 'REFRESHING', 'STEAM_SOFTENING', 'SMART_GRID_RUN', 'ADD_DRAIN', 'DETERGENT_AMOUNT', 'PREWASH', 'SHOES_MODULE', 'PROOFING', 'DISPENSING', 'SOFTENING', 'CHECKING_TURBIDITY', 'CHANGE_CONDITION', 'DISPLAY_LOADSIZE', 'FROZEN_PREVENT_INITIAL', 'FROZEN_PREVENT_RUNNING'):
             self.machine_state = MachineState.RUN
+            if self._last_machine_state != self.machine_state.value:
+                self._last_machine_state = self.machine_state.value
         elif device_operation_state in ('PAUSE', 'RESERVED', 'RINSE_HOLD', 'ERROR', 'FROZEN_PREVENT_PAUSE'):
             self.machine_state = MachineState.PAUSE
+            if self._last_machine_state != self.machine_state.value:
+                self._last_machine_state = self.machine_state.value
         else:  # POWER_OFF, STOP, etc.
             self.machine_state = MachineState.STOP
+            if self._last_machine_state != self.machine_state.value:
+                self._last_machine_state = self.machine_state.value
+
 
         # Mapear estado específico del lavado a washer_job_state
         # LG devuelve: "COOL_DOWN", "DRYING", "FINISH", "PREWASH", "RINSING", "SPINNING", "RUNNING", "DETECTING"
@@ -264,9 +284,13 @@ class LGWasherAccessory:
         try:
             enum_name = lg_to_enum_name.get(job_state_str, "NONE")
             self.washer_job_state = WasherJobState[enum_name]  # ✅ Acceso por nombre
+            if job_state_str != self._last_washer_job_state:
+                self._last_washer_job_state = job_state_str
             #logger.info(f"LG state '{job_state_str}' → Enum name '{enum_name}' → SmartThings value '{self.washer_job_state.value}'")
         except KeyError:
             self.washer_job_state = WasherJobState.NONE
+            if job_state_str != self._last_washer_job_state:
+                self._last_washer_job_state = job_state_str
             logger.warning(f"Estado de trabajo desconocido: {job_state_str}")
 
         # Actualizar tiempo de completación (si está disponible)
@@ -283,6 +307,8 @@ class LGWasherAccessory:
             
             # Convertir a formato ISO 8601: YYYY-MM-DDTHH:MM:SS.sssZ
             self.completion_time = completion_datetime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+            if self._last_completion_time != self.completion_time:
+                self._last_completion_time = self.completion_time
 
     def set_device_manager(self, device_manager):
         """
@@ -292,15 +318,6 @@ class LGWasherAccessory:
             device_manager: Instancia de DeviceManager para enviar comandos
         """
         self.device_manager = device_manager
-
-    def set_smartthings_service(self, smartthings_service):
-        """
-        Establecer el smartthings_service (inyección de dependencia postinit).
-
-        Args:
-            smartthings_service: Instancia de SmartThingsService para notificaciones
-        """
-        self.smartthings_service = smartthings_service
 
     # TODO: REVIEW y corregir
     def translate_smartthings_command(self, st_command: Dict) -> Optional[Dict]:
