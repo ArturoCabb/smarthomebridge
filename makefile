@@ -74,3 +74,6 @@ clean:
 	else \
 		rm -rf $(VENV); \
 	fi
+
+test:
+	$(PY) -m pytest tests/ -v
