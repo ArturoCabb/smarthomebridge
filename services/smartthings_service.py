@@ -143,7 +143,7 @@ class SmartThingsService:
                     <input type="hidden" name="client_id" value="{{ client_id }}">
                     <button type="submit" name="approve">Permitir</button>
                 </form>
-            ''', redirect_uri=redirect_uri, state=state, client_id=client_id), 201
+            ''', redirect_uri=redirect_uri, state=state, client_id=client_id), 200
             
         else:  # POST
             if 'approve' in request.form:
@@ -154,8 +154,8 @@ class SmartThingsService:
                 
                 final_url = f"{redirect_uri}?code={code}&state={state}"
                 logger.info("-"*50)
-                
-                return redirect(final_url), 200
+                logger.info("Redirigiendo a: %s", final_url)
+                return redirect(final_url)
             else:
                 return "Acceso denegado", 403
 
