@@ -180,35 +180,57 @@ class SmartThingsService:
     
     def target_endpoint(self):
         logger.info("-"*10 + " [Aqui inicia target end point] " + "-"*10)
-        respuesta = {}
-        data: dict = request.get_json() if request.is_json else request.form.to_dict()
+        logger.info("Content-Type: %s", request.content_type)
+        data = request.get_json(silent=True)
+        if data is None:
+            body_text = request.get_data(as_text=True)
+            logger.info("Request body raw: %s", body_text)
+            try:
+                data = loads(body_text) if body_text else {}
+            except JSONDecodeError:
+                data = request.form.to_dict()
         if not data:
-            return {'error': 'No data received'}, 400
-        
+            logger.error("target_endpoint: no request body received")
+            return jsonify({"error": "No data received"}), 400
+
         request_id = data.get('headers', {}).get('requestId')
-        operatin_type: str = data.get('headers', {}).get('interactionType')
-        if operatin_type == "discoveryRequest":
+        interaction_type = data.get('headers', {}).get('interactionType')
+        logger.info("target_endpoint interactionType=%s requestId=%s", interaction_type, request_id)
+
+        if interaction_type == "discoveryRequest":
             respuesta = self.handle_device_discovered(request_id)
-        elif operatin_type == "stateRefreshRequest":
+        elif interaction_type == "stateRefreshRequest":
             respuesta = self.state_refresh_request(request_id)
-        elif operatin_type == "commandRequest":
-            logger.info("-"*10 + f" Respuesta recibida para {operatin_type} " + "-"*10)
-            logger.info("data recibida del server de autorization " + str(request.authorization))
-            logger.info("data recibida del server " + str(data))
-            respuesta = self.command_request(request_id, data.get("commands"))
+        elif interaction_type == "commandRequest":
+            logger.info("-"*10 + f" Respuesta recibida para {interaction_type} " + "-"*10)
+            logger.info("data recibida del server authorization: %s", request.authorization)
+            logger.info("data recibida del server: %s", data)
+            respuesta = self.command_request(request_id, data.get("devices") or data.get("commands") or [])
             logger.info("-"*50)
-        elif operatin_type == "grantCallbackAccess":
-            logger.info("-"*10 + f" Respuesta recibida para {operatin_type} " + "-"*10)
-            logger.info("data recibida del server " + str(data))
-            self.code = data.get("callbackAuthentication").get("code")
-            self.callbackUrlsoauthToken = data.get("callbackUrls").get("oauthToken")
-            self.callbackUrlsstateCallback = data.get("callbackUrls").get("stateCallback")
+        elif interaction_type == "grantCallbackAccess":
+            logger.info("-"*10 + f" Respuesta recibida para {interaction_type} " + "-"*10)
+            logger.info("data recibida del server: %s", data)
+            callback_auth = data.get("callbackAuthentication") or {}
+            callback_urls = data.get("callbackUrls") or {}
+            self.code = callback_auth.get("code")
+            self.callbackUrlsoauthToken = callback_urls.get("oauthToken")
+            self.callbackUrlsstateCallback = callback_urls.get("stateCallback")
+            if not self.code or not self.callbackUrlsoauthToken or not self.callbackUrlsstateCallback:
+                logger.error("grantCallbackAccess missing callbackAuthentication or callbackUrls")
+                return jsonify({"error": "Missing callbackAuthentication or callbackUrls"}), 400
             rr, status = self.send_token_request()
             if status == 200:
-                datos = [data.get("authentication"), data.get("callbackAuthentication"), data.get("callbackUrls"), rr.get("callbackAuthentication")]
+                datos = [data.get("authentication"), callback_auth, callback_urls, rr.get("callbackAuthentication")]
                 self.save_shake(datos)
+            else:
+                logger.error("grantCallbackAccess accessTokenRequest failed: %s", rr)
             logger.info("-"*50)
-        return respuesta, 200
+            respuesta = rr if isinstance(rr, dict) else {}
+        else:
+            logger.error("target_endpoint unknown interactionType: %s", interaction_type)
+            return jsonify({"error": "Unsupported interactionType"}), 400
+
+        return jsonify(respuesta), 200
     
     def handle_device_discovered(self, request_id):
         result = {
@@ -261,6 +283,10 @@ class SmartThingsService:
         return result
 
     def send_token_request(self):
+        if not self.callbackUrlsoauthToken:
+            logger.error("send_token_request: oauthToken callback URL is empty")
+            return {"error": "Missing oauthToken callback URL"}, 400
+
         message = {
             "headers": {
                 "schema": "st-schema",
@@ -275,11 +301,17 @@ class SmartThingsService:
                 "clientSecret": self.St_Client_Secret
             }
         }
-        logger.info("-"*50 + " Aqui inicia el [accesTokenRequest] " + "-"*50)
-        result = send_req(self.callbackUrlsoauthToken, json=message)
-        logger.info(result.json())
+        logger.info("-"*50 + " Aqui inicia el [accessTokenRequest] " + "-"*50)
+        logger.info("accessTokenRequest url=%s payload=%s", self.callbackUrlsoauthToken, message)
+        result = send_req(self.callbackUrlsoauthToken, json=message, headers={"Content-Type": "application/json"})
+        try:
+            body = result.json()
+        except Exception as exc:
+            logger.error("send_token_request: invalid JSON response: %s", exc)
+            body = {"error": "Invalid JSON response"}
+        logger.info("accessTokenResponse=%s status=%s", body, result.status_code)
         logger.info("-"*50)
-        return result.json(), result.status_code
+        return body, result.status_code
 
     def refresh_token(self):
         message = {
