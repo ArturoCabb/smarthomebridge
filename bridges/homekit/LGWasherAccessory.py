@@ -1,18 +1,12 @@
 from pyhap.accessory import Accessory
 from pyhap.const import CATEGORY_OTHER
 import requests
-import configparser
+from config import TelegramConfig
 
 class LGWasherAccessory(Accessory):
     """Accessory to turn on/off the LG Washer."""
     category = CATEGORY_OTHER
 
-    CONFIG_DIR = './.smarthome/'
-    CONFIG_FILE = CONFIG_DIR + 'config.conf'
-    config_vars = configparser.ConfigParser()
-    config_vars.read(CONFIG_FILE, encoding='utf-8')
-    telegram_url = config_vars.get('TELEGRAM','base_url')
-    telegram_chatid = config_vars.getint('TELEGRAM','chat_id')
     telegram_trigger = False
 
     def __init__(self, driver, display_name, device_id, device_manager):
@@ -126,8 +120,8 @@ class LGWasherAccessory(Accessory):
         if state.state.get('state') == "RINSING":
             self.char_status_ocupancy_detected.set_value(1)
             self.char_status_ocupancy_status_tampered.set_value(1)
-            if self.telegram_trigger == False:
-                requests.get(url=self.telegram_url, json={"chat_id": self.telegram_chatid, "text": "La lavadora termino de lavar y ahora va a enjuagar"})
+            if self.telegram_trigger is False:
+                requests.get(url=TelegramConfig().telegram_url, json={"chat_id": TelegramConfig().telegram_chatid, "text": "La lavadora termino de lavar y ahora va a enjuagar"}, timeout=10)
                 self.telegram_trigger = True
         else:
             self.char_status_ocupancy_detected.set_value(0)

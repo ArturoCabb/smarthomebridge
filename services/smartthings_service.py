@@ -8,18 +8,15 @@ import secrets
 from requests import post as send_req
 from json import dumps, loads, JSONDecodeError
 from uuid import uuid4
-import configparser
 import os
 import logging
-from typing import Dict, List
-from config import config
+from typing import Dict
+from config import SmartThingsConfig
 
 logger = logging.getLogger(__name__)
 
 class SmartThingsService:
     """Servicio SmartThings"""
-    config_parser = configparser.ConfigParser()
-    config_parser.read(config.CONFIG_FILE)
     
     def __init__(self):
         self.app = Flask(__name__)
@@ -29,16 +26,16 @@ class SmartThingsService:
         self.callbackUrlsstateCallback = ""
         self.token_from_smartthings = ""
         self.refresh_token_sesion_smartthings = ""
-        self.my_client_id = self.config_parser.get("SMARTTHINGS", "my_client_id")
-        self.my_client_secret = self.config_parser.get("SMARTTHINGS", "my_client_secret")
-        self.Endpoint_App_Id = self.config_parser.get("SMARTTHINGS", "Endpoint_App_Id")
-        self.St_Client_Id = self.config_parser.get("SMARTTHINGS", "St_Client_Id")
-        self.St_Client_Secret = self.config_parser.get("SMARTTHINGS", "St_Client_Secret")
-        self.host = self.config_parser.get("SMARTTHINGS", "host")
-        self.port = self.config_parser.getint("SMARTTHINGS", "port")
-        self.credentials_file = self.config_parser.get('SMARTTHINGS', 'credentials_file')
-        self.devies_config_file = self.config_parser.get('SMARTTHINGS', 'devies_conmfig_file', fallback="./.smarthome/smartthingsDevices.json")
-
+        self.my_client_id = SmartThingsConfig().my_client_id
+        self.my_client_secret = SmartThingsConfig().my_client_secret
+        self.Endpoint_App_Id = SmartThingsConfig().Endpoint_App_Id
+        self.St_Client_Id = SmartThingsConfig().St_Client_Id
+        self.St_Client_Secret = SmartThingsConfig().St_Client_Secret
+        self.host = SmartThingsConfig().host
+        self.port = SmartThingsConfig().port
+        self.credentials_file = SmartThingsConfig().credentials_file
+        self.devies_config_file = SmartThingsConfig().devies_config_file
+        
         # Registrar rutas
         self.app.add_url_rule('/', 'health', self.health_check, methods=['GET'])
         self.app.add_url_rule('/oauth/login', 'authorize', self.authorize, methods=['GET', 'POST'])
@@ -54,11 +51,11 @@ class SmartThingsService:
             try:
                 self.discovery_callback()
             except Exception as e:
-                logger.error(f"Error in discovery_callback: {e}")
+                logger.error("Error in discovery_callback: %s", e, exc_info=True)
                 try:
                     self.refresh_token()
                 except Exception as e2:
-                    logger.error(f"Error refreshing token: {e2}")
+                    logger.error("Error refreshing token: %s", e2, exc_info=True)
 
     def health_check(self):
         """Health check endpoint para nginx y monitoreo"""
@@ -70,28 +67,28 @@ class SmartThingsService:
 
     def add_accessory(self, device_id: str, accessory):
         if device_id in self.accessories:
-            logger.warning(f"Accesorio ya existe en smartthings service: {device_id}")
+            logger.warning("Accesorio ya existe en smartthings service: %s", device_id)
             return False
         
         self.accessories[device_id] = accessory
-        logger.info(f"Accesorio agregado a smartthings service: {accessory.external_device_id}")
+        logger.info("Accesorio agregado a smartthings service: %s", accessory.external_device_id)
         return True
 
     def save_shake(self, data):
-        with open(self.credentials_file, "w+") as file:
+        with open(self.credentials_file, "w+", encoding='utf-8') as file:
             file.write(dumps(data, indent=2))
 
     def save_new_token(self, access_token, refresh_token, expieres):
         try:
-            with open(self.credentials_file, "r") as file:
+            with open(self.credentials_file, "r", encoding='utf-8') as file:
                 d = loads(file.read())
                 d[3]["accessToken"] = access_token
                 d[3]["refreshToken"] = refresh_token
                 d[3]["expiresIn"] = expieres
-                with open(self.credentials_file, "w+") as file:
+                with open(self.credentials_file, "w+", encoding='utf-8') as file:
                     file.write(dumps(d, indent=2))
         except (FileNotFoundError, JSONDecodeError, KeyError, IndexError) as e:
-            logger.error(f"Error saving new token: {e}")
+            logger.error("Error saving new token: %s", e, exc_info=True)
 
     def start(self):
         """Iniciar el servidor smartthings (bloqueante)"""
@@ -112,7 +109,7 @@ class SmartThingsService:
                 self.token_from_smartthings = d[3].get("accessToken", "")
                 self.refresh_token_sesion_smartthings = d[3].get("refreshToken", "")
         except (FileNotFoundError, JSONDecodeError, KeyError, IndexError) as e:
-            logger.error(f"Error reading config file: {e}")
+            logger.error("Error reading config file: %s", e, exc_info=True)
             # Reset to defaults
             self.code = ""
             self.callbackUrlsoauthToken = ""
@@ -125,10 +122,10 @@ class SmartThingsService:
             client_id = request.args.get('client_id')
             redirect_uri = request.args.get('redirect_uri')
             state = request.args.get('state')
-            logger.info(f"--- [GET /oauth/login] ---")
-            logger.info(f"SmartThings pide redirigir a: {redirect_uri}")
-            logger.info(f"State: {state}")
-            logger.info(f"Client ID: {client_id}")
+            logger.info("--- [GET /oauth/login] ---")
+            logger.info("SmartThings pide redirigir a: %s", redirect_uri)
+            logger.info("State: %s", state)
+            logger.info("Client ID: %s", client_id)
             if client_id != self.my_client_id:
                 return "Denegado, tu no tienes permiso para entrar.", 401
             
@@ -174,7 +171,7 @@ class SmartThingsService:
             'expires_in': 3600,
             'refresh_token': refresh_token
         }
-        logger.info("Token generado final: " + str(final_toke))
+        logger.info("Token generado final: %s", str(final_toke))
         logger.info("-"*50)
         return final_toke
     
@@ -202,13 +199,13 @@ class SmartThingsService:
         elif interaction_type == "stateRefreshRequest":
             respuesta = self.state_refresh_request(request_id)
         elif interaction_type == "commandRequest":
-            logger.info("-"*10 + f" Respuesta recibida para {interaction_type} " + "-"*10)
+            logger.info("-"*10 + " Respuesta recibida para %s " + "-"*10, interaction_type)
             logger.info("data recibida del server authorization: %s", request.authorization)
             logger.info("data recibida del server: %s", data)
             respuesta = self.command_request(request_id, data.get("devices") or data.get("commands") or [])
             logger.info("-"*50)
         elif interaction_type == "grantCallbackAccess":
-            logger.info("-"*10 + f" Respuesta recibida para {interaction_type} " + "-"*10)
+            logger.info("-"*10 + " Respuesta recibida para %s " + "-"*10, interaction_type)
             logger.info("data recibida del server: %s", data)
             callback_auth = data.get("callbackAuthentication") or {}
             callback_urls = data.get("callbackUrls") or {}
@@ -303,7 +300,7 @@ class SmartThingsService:
         }
         logger.info("-"*50 + " Aqui inicia el [accessTokenRequest] " + "-"*50)
         logger.info("accessTokenRequest url=%s payload=%s", self.callbackUrlsoauthToken, message)
-        result = send_req(self.callbackUrlsoauthToken, json=message, headers={"Content-Type": "application/json"})
+        result = send_req(self.callbackUrlsoauthToken, json=message, headers={"Content-Type": "application/json"}, timeout=10)
         try:
             body = result.json()
         except Exception as exc:
@@ -328,7 +325,7 @@ class SmartThingsService:
                 "clientSecret": self.St_Client_Secret
             }
         }
-        result = send_req(self.callbackUrlsoauthToken, json=message)
+        result = send_req(self.callbackUrlsoauthToken, json=message, timeout=10)
         logger.info("Refresh token")
         rr = result.json()
         logger.info(rr)
@@ -360,14 +357,14 @@ class SmartThingsService:
                 ]
             }
             print("Este es el mensaje que se va a enviar a SmartThings en send_device_status: " + str(message))
-            result = send_req(self.callbackUrlsstateCallback, json=message)
+            result = send_req(self.callbackUrlsstateCallback, json=message, timeout=10)
             return {}, result.status_code
         except Exception as e:
-            logger.error(f"Error in send_device_status: {e}")
+            logger.error("Error in send_device_status: %s", e, exc_info=True)
             try:
                 self.refresh_token()
             except Exception as e2:
-                logger.error(f"Error refreshing token: {e2}")
+                logger.error("Error refreshing token: %s", e2, exc_info=True)
             return None, 500
 
     def discovery_callback(self, devices_list=None):
@@ -389,12 +386,12 @@ class SmartThingsService:
                     i.to_discovery_dict() for i in devices_list
                 ]
             }
-            result = send_req(self.callbackUrlsstateCallback, json=message)
+            result = send_req(self.callbackUrlsstateCallback, json=message, timeout=10)
             return {}, result.status_code
         except Exception as e:
-            logger.error(f"Error in discovery_callback: {e}")
+            logger.error("Error in discovery_callback: %s", e, exc_info=True)
             try:
                 self.refresh_token()
             except Exception as e2:
-                logger.error(f"Error refreshing token: {e2}")
+                logger.error("Error refreshing token: %s", e2, exc_info=True)
             return None, 500

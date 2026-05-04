@@ -41,7 +41,7 @@ class AppManager:
             self.hap_service.start()
 
         except Exception as e:
-            logger.error(f"Error crítico en HomeKit: {e}", exc_info=True)
+            logger.error("Error crítico en HomeKit: %s", e, exc_info=True)
             raise
 
     def _smartthings(self):
@@ -66,7 +66,7 @@ class AppManager:
             self.smartthings_service.start()
 
         except Exception as e:
-            logger.error(f"Error crítico en SmartThings: {e}", exc_info=True)
+            logger.error("Error crítico en SmartThings: %s", e, exc_info=True)
             raise
 
     def initialize(self):
@@ -83,7 +83,7 @@ class AppManager:
             logger.warning(" No se encontraron dispositivos")
             return False
 
-        logger.info(f"Encontrados {len(discovered)} dispositivos")
+        logger.info("Encontrados %s dispositivos", len(discovered))
 
         # 2. Agregar dispositivos al Device Manager
         logger.info("\n2. Agregando dispositivos al Device Manager...")
@@ -101,10 +101,10 @@ class AppManager:
             try:
                 plugin.get_api_client()
                 discovered = plugin.discover_devices()
-                logger.info(f"  {plugin.brand.upper()}: {len(discovered)} dispositivos")
+                logger.info("  %s: %s dispositivos", plugin.brand.upper(), len(discovered))
                 all_discovered.extend(discovered)
             except Exception as e:
-                logger.error(f"Error con {plugin.brand}: {e}")
+                logger.error("Error con %s: %s", plugin.brand, e, exc_info=True)
 
         return all_discovered
 

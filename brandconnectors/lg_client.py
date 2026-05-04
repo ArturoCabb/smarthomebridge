@@ -66,8 +66,8 @@ class LGThinQClient(BaseClient):
             )
             
             # Log de respuesta
-            logger.debug(f"Status: {response.status_code}")
-            logger.debug(f"Response: {response.text[:200]}")
+            logger.debug("Status: %s", response.status_code)
+            logger.debug("Response: %s", response.text[:200])
             
             # Verificar errores
             if response.status_code == 416:
@@ -76,10 +76,10 @@ class LGThinQClient(BaseClient):
             
             return response.json()
         except LGDeviceOfflineError:
-            logger.warning(f"Recurso no disponible (416) para {url}")
+            logger.warning("Recurso no disponible (416) para %s", url)
             raise
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error en petición: {e}")
+            logger.error("Error en petición: %s", e)
             raise
     
     def get_device_state(self, device_id: str) -> Dict[str, Any]:
@@ -100,7 +100,7 @@ class LGThinQClient(BaseClient):
         except LGDeviceOfflineError:
             return {}
         except Exception as e:
-            logger.error(f"Error al obtener estado de {device_id}: {e}")
+            logger.error("Error al obtener estado de %s: %s", device_id, e)
             return {}
     
     def get_device_profile(self, device_id: str) -> Dict[str, Any]:
@@ -118,10 +118,10 @@ class LGThinQClient(BaseClient):
             response = self._make_request('POST', f'/devices/{device_id}/control', json_data=command_data)
             return response.get("response") == {}
         except LGDeviceOfflineError:
-            logger.warning(f"No se pudo enviar el comando {device_id}")
+            logger.warning("No se pudo enviar el comando %s", device_id)
             return False
         except Exception as e:
-            logger.error(f"Error al enviar comando a {device_id}: {e}")
+            logger.error("Error al enviar comando a %s: %s", device_id, e)
             return False
     
     def get_devices_list(self) -> List[Dict[str, Any]]:

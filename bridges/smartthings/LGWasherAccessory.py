@@ -209,7 +209,7 @@ class LGWasherAccessory:
             device_state: DeviceState obtenido del plugin
         """
         if not device_state or not hasattr(device_state, 'state'):
-            logger.warning(f"DeviceState inválido para {self.external_device_id}")
+            logger.warning("DeviceState inválido para %s", self.external_device_id)
             return
         
         state = device_state.state.get("state", "POWER_OFF").upper()
@@ -291,7 +291,7 @@ class LGWasherAccessory:
             self.washer_job_state = WasherJobState.NONE
             if job_state_str != self._last_washer_job_state:
                 self._last_washer_job_state = job_state_str
-            logger.warning(f"Estado de trabajo desconocido: {job_state_str}")
+            logger.warning("Estado de trabajo desconocido: %s", job_state_str)
 
         # Actualizar tiempo de completación (si está disponible)
         if 'remain_time_m' in device_state.state:
@@ -319,7 +319,7 @@ class LGWasherAccessory:
         """
         self.device_manager = device_manager
 
-    # TODO: REVIEW y corregir
+    #TODO: REVIEW y corregir
     def translate_smartthings_command(self, st_command: Dict) -> Optional[Dict]:
         """
         Traducir comando de SmartThings a formato API LG.
@@ -365,7 +365,7 @@ class LGWasherAccessory:
             except (ValueError, ZeroDivisionError):
                 pass
 
-        logger.warning(f"No se puede traducir comando SmartThings: {st_command}")
+        logger.warning("No se puede traducir comando SmartThings: %s", st_command)
         return None
 
     # TODO: Corregir
@@ -386,16 +386,16 @@ class LGWasherAccessory:
         3. Retornar resultado
         """
         if not self.device_manager:
-            logger.error(f"device_manager no disponible para {self.external_device_id}")
+            logger.error("device_manager no disponible para %s", self.external_device_id)
             return False
 
         try:
             lg_command = self.translate_smartthings_command(st_command)
             if not lg_command:
-                logger.warning(f"No se pudo traducir comando para {self.external_device_id}")
+                logger.warning("No se pudo traducir comando para %s", self.external_device_id)
                 return False
 
-            logger.info(f"Comando traducido: {lg_command}")
+            logger.info("Comando traducido: %s", lg_command)
 
             # Enviar comando al dispositivo via device_manager
             result = self.device_manager.send_command(
@@ -404,12 +404,12 @@ class LGWasherAccessory:
             )
 
             if result:
-                logger.info(f"Comando enviado exitosamente a {self.external_device_id}")
+                logger.info("Comando enviado exitosamente a %s", self.external_device_id)
             else:
-                logger.error(f"Error enviando comando a {self.external_device_id}")
+                logger.error("Error enviando comando a %s", self.external_device_id)
             self.to_command_request()
             return self.to_command_request()
 
         except Exception as e:
-            logger.error(f"Error en handle_smartthings_command: {e}")
+            logger.error("Error en handle_smartthings_command: %s", e)
             return False

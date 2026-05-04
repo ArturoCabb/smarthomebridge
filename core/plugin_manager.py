@@ -43,7 +43,7 @@ class PluginManager:
     def register_plugin(self, plugin: BasePlugin):
         """Registrar un plugin manualmente"""
         self.plugins[plugin.brand] = plugin
-        logger.info(f"Plugin registrado: {plugin.brand}")
+        logger.info("Plugin registrado: %s", plugin.brand)
     
     def get_plugin(self, brand: str) -> Optional[BasePlugin]:
         """Obtener plugin por marca"""
