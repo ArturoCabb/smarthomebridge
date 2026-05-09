@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 class SmartThingsService:
     """Servicio SmartThings"""
     
+    # Mapeo seguro de identificadores a URIs permitidas
+    ALLOWED_REDIRECT_URIS = {
+        "us": "https://c2c-us.smartthings.com/oauth/callback",
+        "eu": "https://c2c-eu.smartthings.com/oauth/callback",
+        "ap": "https://c2c-ap.smartthings.com/oauth/callback"
+    }
+    DEFAULT_REDIRECT_KEY = "us"
+    
     def __init__(self):
         self.app = Flask(__name__)
         self.accessories: Dict[str, object] = {}  # device_id -> accessory
@@ -129,26 +137,42 @@ class SmartThingsService:
             if client_id != self.my_client_id:
                 return "Denegado, tu no tienes permiso para entrar.", 401
             
-            if not redirect_uri:
-                logger.warning("¡OJO! redirect_uri vino vacío. Forzando servidor de US...")
-                redirect_uri = "https://c2c-us.smartthings.com/oauth/callback"
+            # Validar que redirect_uri está en la lista permitida y obtener su identificador
+            redirect_key = None
+            for key, uri in self.ALLOWED_REDIRECT_URIS.items():
+                if redirect_uri == uri:
+                    redirect_key = key
+                    break
+            
+            # Si no es válido o está vacío, usar el default
+            if redirect_key is None:
+                logger.warning("redirect_uri no reconocida o vacía, usando default: %s", redirect_uri)
+                redirect_key = self.DEFAULT_REDIRECT_KEY
+            
             return render_template_string('''
                 <h2>Autorizar a SmartThings</h2>
                 <form method="post">
-                    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+                    <input type="hidden" name="redirect_key" value="{{ redirect_key }}">
                     <input type="hidden" name="state" value="{{ state }}">
                     <input type="hidden" name="client_id" value="{{ client_id }}">
                     <button type="submit" name="approve">Permitir</button>
                 </form>
-            ''', redirect_uri=redirect_uri, state=state, client_id=client_id), 200
+            ''', redirect_key=redirect_key, state=state, client_id=client_id), 200
             
         else:  # POST
             if 'approve' in request.form:
-                redirect_uri = request.form.get('redirect_uri')
+                redirect_key = request.form.get('redirect_key', self.DEFAULT_REDIRECT_KEY)
                 state = request.form.get('state')
                 client_id = request.form.get('client_id')
-                code = secrets.token_urlsafe(32)
                 
+                # Validar que redirect_key es válida (no basado en datos del usuario)
+                if redirect_key not in self.ALLOWED_REDIRECT_URIS:
+                    logger.error("Intento de redirección con clave no autorizada: %s", redirect_key)
+                    return "Configuración de redirección no válida", 403
+                
+                # Obtener la URL del diccionario seguro (no del usuario)
+                redirect_uri = self.ALLOWED_REDIRECT_URIS[redirect_key]
+                code = secrets.token_urlsafe(32)
                 final_url = f"{redirect_uri}?code={code}&state={state}"
                 logger.info("-"*50)
                 logger.info("Redirigiendo a: %s", final_url)

@@ -62,7 +62,6 @@ class HAPService:
         """Remover un accesorio del bridge"""
         if device_id not in self.accessories:
             logger.warning("Accesorio no encontrado: %s", device_id)
-            return False
         
         # HAP no soporta remover accesorios dinámicamente
         # Necesitarías reiniciar el servicio

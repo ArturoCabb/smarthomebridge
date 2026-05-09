@@ -97,6 +97,7 @@ class LGWasherAccessory:
         """
         Send device info formated to function state_refresh_request()
         """
+        str_op_state = "st.washerOperatingState"
         return {
             "externalDeviceId": self.external_device_id,
             "deviceCookie": self.device_cookie,
@@ -109,19 +110,19 @@ class LGWasherAccessory:
                 },
                 {
                     "component": "main",
-                    "capability": "st.washerOperatingState",
+                    "capability": str_op_state,
                     "attribute": "completionTime",
                     "value": self.completion_time
                 },
                 {
                     "component": "main",
-                    "capability": "st.washerOperatingState",
+                    "capability": str_op_state,
                     "attribute": "machineState",
                     "value": self.machine_state.value,
                 },
                 {
                     "component": "main",
-                    "capability": "st.washerOperatingState",
+                    "capability": str_op_state,
                     "attribute": "washerJobState",
                     "value": self.washer_job_state.value,
                 },
@@ -152,6 +153,7 @@ class LGWasherAccessory:
         """
         timestamp = int(time.time() * 1000)  # Current time in milliseconds
         campos_a_agergar = []
+        str_op_state = "st.washerOperatingState"
         if self._last_health_status != self.health_status.value:
             campos_a_agergar.append(
                 {
@@ -167,7 +169,7 @@ class LGWasherAccessory:
             campos_a_agergar.append(
                 {
                     "component": "main",
-                    "capability": "st.washerOperatingState",
+                    "capability": str_op_state,
                     "attribute": "completionTime",
                     "value": self.completion_time,
                     "timestamp": timestamp,
@@ -178,7 +180,7 @@ class LGWasherAccessory:
             campos_a_agergar.append(
                 {
                     "component": "main",
-                    "capability": "st.washerOperatingState",
+                    "capability": str_op_state,
                     "attribute": "machineState",
                     "value": self.machine_state.value,
                     "timestamp": timestamp,
@@ -189,7 +191,7 @@ class LGWasherAccessory:
             campos_a_agergar.append(
                 {
                     "component": "main",
-                    "capability": "st.washerOperatingState",
+                    "capability": str_op_state,
                     "attribute": "washerJobState",
                     "value": self.washer_job_state.value,
                     "timestamp": timestamp,

@@ -10,5 +10,6 @@ class LGDeviceState(BaseDeviceState):
     pass
 
 class LGDevice(BaseDevice):
+    """Dispositivo específico de LG"""
     brand = "lg"
     # Lógica común a todos los dispositivos LG
