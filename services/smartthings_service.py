@@ -19,12 +19,11 @@ class SmartThingsService:
     """Servicio SmartThings"""
     
     # Mapeo seguro de identificadores a URIs permitidas
-    ALLOWED_REDIRECT_URIS = {
-        "us": "https://c2c-us.smartthings.com/oauth/callback",
-        "eu": "https://c2c-eu.smartthings.com/oauth/callback",
-        "ap": "https://c2c-ap.smartthings.com/oauth/callback"
-    }
-    DEFAULT_REDIRECT_KEY = "us"
+    ALLOWED_REDIRECT_URIS = [
+        "https://c2c-us.smartthings.com/",
+        "https://c2c-eu.smartthings.com/",
+        "https://c2c-ap.smartthings.com/"
+    ]
     
     def __init__(self):
         self.app = Flask(__name__)
@@ -131,52 +130,29 @@ class SmartThingsService:
             redirect_uri = request.args.get('redirect_uri')
             state = request.args.get('state')
             logger.info("--- [GET /oauth/login] ---")
-            logger.info("SmartThings pide redirigir a: %s", redirect_uri)
-            logger.info("State: %s", state)
-            logger.info("Client ID: %s", client_id)
             if client_id != self.my_client_id:
                 return "Denegado, tu no tienes permiso para entrar.", 401
             
             # Validar que redirect_uri está en la lista permitida y obtener su identificador
-            redirect_key = None
-            for key, uri in self.ALLOWED_REDIRECT_URIS.items():
-                if redirect_uri == uri:
-                    redirect_key = key
-                    break
-            
-            # Si no es válido o está vacío, usar el default
-            if redirect_key is None:
-                logger.warning("redirect_uri no reconocida o vacía, usando default: %s", redirect_uri)
-                redirect_key = self.DEFAULT_REDIRECT_KEY
-            
             return render_template_string('''
                 <h2>Autorizar a SmartThings</h2>
                 <form method="post">
-                    <input type="hidden" name="redirect_key" value="{{ redirect_key }}">
+                    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
                     <input type="hidden" name="state" value="{{ state }}">
                     <input type="hidden" name="client_id" value="{{ client_id }}">
                     <button type="submit" name="approve">Permitir</button>
                 </form>
-            ''', redirect_key=redirect_key, state=state, client_id=client_id), 200
+            ''', redirect_uri=redirect_uri, state=state, client_id=client_id), 200
             
         else:  # POST
             if 'approve' in request.form:
-                redirect_key = request.form.get('redirect_key', self.DEFAULT_REDIRECT_KEY)
+                redirect_uri = request.form.get('redirect_uri')
                 state = request.form.get('state')
                 client_id = request.form.get('client_id')
-                
-                # Validar que redirect_key es válida (no basado en datos del usuario)
-                if redirect_key not in self.ALLOWED_REDIRECT_URIS:
-                    logger.error("Intento de redirección con clave no autorizada: %s", redirect_key)
-                    return "Configuración de redirección no válida", 403
-                
-                # Obtener la URL del diccionario seguro (no del usuario)
-                redirect_uri = self.ALLOWED_REDIRECT_URIS[redirect_key]
                 code = secrets.token_urlsafe(32)
-                final_url = f"{redirect_uri}?code={code}&state={state}"
-                logger.info("-"*50)
-                logger.info("Redirigiendo a: %s", final_url)
-                return redirect(final_url)
+                if redirect_uri in self.ALLOWED_REDIRECT_URIS:
+                    final_url = f"{redirect_uri}?code={code}&state={state}"
+                    return redirect(final_url)
             else:
                 return "Acceso denegado", 403
 
@@ -205,7 +181,6 @@ class SmartThingsService:
         data = request.get_json(silent=True)
         if data is None:
             body_text = request.get_data(as_text=True)
-            logger.info("Request body raw: %s", body_text)
             try:
                 data = loads(body_text) if body_text else {}
             except JSONDecodeError:
@@ -223,19 +198,14 @@ class SmartThingsService:
         elif interaction_type == "stateRefreshRequest":
             respuesta = self.state_refresh_request(request_id)
         elif interaction_type == "commandRequest":
-            logger.info("-"*10 + " Respuesta recibida para %s " + "-"*10, interaction_type)
-            logger.info("data recibida del server authorization: %s", request.authorization)
-            logger.info("data recibida del server: %s", data)
             respuesta = self.command_request(request_id, data.get("devices") or data.get("commands") or [])
             logger.info("-"*50)
         elif interaction_type == "grantCallbackAccess":
-            logger.info("-"*10 + " Respuesta recibida para %s " + "-"*10, interaction_type)
-            logger.info("data recibida del server: %s", data)
-            callback_auth = data.get("callbackAuthentication") or {}
-            callback_urls = data.get("callbackUrls") or {}
+            callback_auth = data.get("callbackAuthentication", {})
+            callback_urls = data.get("callbackUrls", {})
             self.code = callback_auth.get("code")
-            self.callbackUrlsoauthToken = callback_urls.get("oauthToken")
-            self.callbackUrlsstateCallback = callback_urls.get("stateCallback")
+            self.callbackUrlsoauthToken = callback_urls.get("oauthToken") if callback_urls.get("oauthToken") in self.ALLOWED_REDIRECT_URIS else "https://c2c-us.smartthings.com/oauth/token"
+            self.callbackUrlsstateCallback = callback_urls.get("stateCallback") if callback_urls.get("oauthToken") in self.ALLOWED_REDIRECT_URIS else "https://c2c-us.smartthings.com/oauth/token"
             if not self.code or not self.callbackUrlsoauthToken or not self.callbackUrlsstateCallback:
                 logger.error("grantCallbackAccess missing callbackAuthentication or callbackUrls")
                 return jsonify({"error": "Missing callbackAuthentication or callbackUrls"}), 400
