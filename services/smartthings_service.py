@@ -1,7 +1,7 @@
 """
 Servicio SmartThings que maneja el Bridge y accesorios
 """
-from flask import Flask, request, render_template_string, redirect, jsonify, url_for
+from flask import Flask, request, render_template_string, redirect, jsonify
 from authlib.integrations.flask_client import OAuth
 from authlib.oauth2.rfc6749 import grants
 import secrets
@@ -132,8 +132,11 @@ class SmartThingsService:
             logger.info("--- [GET /oauth/login] ---")
             if client_id != self.my_client_id:
                 return "Denegado, tu no tienes permiso para entrar.", 401
-            
-            # Validar que redirect_uri está en la lista permitida y obtener su identificador
+
+            if not redirect_uri or redirect_uri not in self.ALLOWED_REDIRECT_URIS:
+                logger.error("redirect_uri no permitida en GET: %s", redirect_uri)
+                return "URI de redirección no autorizada", 403
+
             return render_template_string('''
                 <h2>Autorizar a SmartThings</h2>
                 <form method="post">
@@ -149,12 +152,24 @@ class SmartThingsService:
                 redirect_uri = request.form.get('redirect_uri')
                 state = request.form.get('state')
                 client_id = request.form.get('client_id')
+
+                if client_id != self.my_client_id:
+                    return "Denegado, tu no tienes permiso para entrar.", 401
+
+                if not redirect_uri or redirect_uri not in self.ALLOWED_REDIRECT_URIS:
+                    logger.error("redirect_uri no permitida en POST: %s", redirect_uri)
+                    return "URI de redirección no autorizada", 403
+
                 code = secrets.token_urlsafe(32)
-                if redirect_uri in self.ALLOWED_REDIRECT_URIS:
-                    final_url = f"{redirect_uri}?code={code}&state={state}"
-                    return redirect(url_for(final_url))
-            else:
-                return "Acceso denegado", 403
+                base_uri = None
+                for allowed_uri in self.ALLOWED_REDIRECT_URIS:
+                    if redirect_uri.startswith(allowed_uri):
+                        base_uri = allowed_uri
+                        break
+                final_url = f"{base_uri}/oauth/callback?code={code}&state={state}"
+                return redirect(final_url)
+
+            return "Acceso denegado", 403
 
     def token(self):
         logger.info("-"*10 + " [Aqui inicia el token] " + "-"*10)
