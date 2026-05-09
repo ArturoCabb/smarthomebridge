@@ -4,17 +4,24 @@
 .qodo
 tests/
 *.log
-__pycache__/
+*__pycache__*
 *.pyc
-.vscode/
+.vscode
 .github
 .gitignore
 compose.yaml
 hap_config.json
-hap_state.jsom
+hap_state.json
 miscript.service
 readme.md
 respuesta_estados.json
 runme.sh
 washer.json
 Dockerfile
+requirements-dev.txt
+.claude
+.mypy_cache
+.smarthome
+Device profile (Lavadora LG).json
+*.md
+makefile

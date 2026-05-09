@@ -13,6 +13,8 @@ tests/
 __pycache__/
 *.pyc
 .vscode/
+.mypy_cache/
+.pytest_cache/
 .smarthome
 hap_config.json
 hap_state.jsom
