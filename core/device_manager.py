@@ -60,7 +60,7 @@ class DeviceManager:
         
         with self._lock:
             if device_id in self.devices:
-                logger.warning(f"Dispositivo {device_id} ya existe")
+                logger.warning("Dispositivo %s ya existe", device_id)
                 return self.devices[device_id]
             
             device_state = DeviceState(
@@ -73,7 +73,7 @@ class DeviceManager:
             
             self.devices[device_id] = device_state
             
-            logger.info(f"Dispositivo agregado: {device_state.name}")
+            logger.info("Dispositivo agregado: %s", device_state.name)
             
             return device_state
     
@@ -110,7 +110,7 @@ class DeviceManager:
         with self._lock:
             device = self.get_device(device_id)
             if not device:
-                logger.warning(f"Dispositivo {device_id} no encontrado")
+                logger.warning("Dispositivo %s no encontrado", device_id)
                 return
             
             # Actualizar estado
@@ -123,8 +123,8 @@ class DeviceManager:
                 try:
                     callback(device)
                 except Exception as e:
-                    logger.error(f"Error en callback: {e}")
-    
+                    logger.error("Error en callback: %s", e, exc_info=True)
+
     def send_command(self, device_id: str, command_data: Dict) -> bool:
         """
         Enviar comando a un dispositivo.
@@ -138,13 +138,13 @@ class DeviceManager:
         """
         device = self.get_device(device_id)
         if not device:
-            logger.error(f"Dispositivo {device_id} no encontrado")
+            logger.error("Dispositivo %s no encontrado", device_id)
             return False
         
         # Obtener plugin correspondiente
         plugin = self.plugin_manager.get_plugin(device.brand)
         if not plugin:
-            logger.error(f"Plugin no encontrado para {device.brand}")
+            logger.error("Plugin no encontrado para %s", device.brand)
             return False
         
         # Enviar comando a través del plugin
@@ -155,16 +155,16 @@ class DeviceManager:
             )
             
             if success:
-                logger.info(f"Comando enviado a {device.name}")
+                logger.info("Comando enviado a %s", device.name)
                 # Sincronizar estado inmediatamente
                 self._sync_device(device_id)
             else:
-                logger.error(f"Error enviando comando a {device.name}")
+                logger.error("Error enviando comando a %s", device.name)
             
             return success
             
         except Exception as e:
-            logger.error(f"Error enviando comando: {e}")
+            logger.error("Error enviando comando: %s", e, exc_info=True)
             return False
     
     def start_sync(self, interval: int = 10):
@@ -183,7 +183,7 @@ class DeviceManager:
         self._sync_thread = threading.Thread(target=self._sync_loop, daemon=True)
         self._sync_thread.start()
         
-        logger.info(f"Sincronización iniciada (cada {interval}s)")
+        logger.info("Sincronización iniciada (cada %s s)", interval)
     
     def stop_sync(self):
         """Detener sincronización"""
@@ -198,7 +198,7 @@ class DeviceManager:
             try:
                 self._sync_all_devices()
             except Exception as e:
-                logger.error(f"Error en sync loop: {e}")
+                logger.error("Error en sync loop: %s", e, exc_info=True)
             
             time.sleep(self._sync_interval)
     
@@ -237,4 +237,4 @@ class DeviceManager:
                 self.update_device_state(device_id, state_dict)
                 
         except Exception as e:
-            logger.error(f"Error sincronizando {device.name}: {e}")
+            logger.error("Error sincronizando %s: %s", device.name, e, exc_info=True)

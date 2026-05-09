@@ -33,7 +33,7 @@ class SmartThingsBridge:
         device_id = device_state.device_id
         
         if device_id in self.accessories:
-            logger.warning(f"Accessory ya existe para {device_id}")
+            logger.warning("Accessory ya existe para %s", device_id)
             return
         
         # Crear accessory HAP según el tipo de dispositivo
@@ -50,7 +50,7 @@ class SmartThingsBridge:
                 lambda ds: self._on_device_state_changed(ds)
             )
             
-            logger.info(f"Dispositivo {device_state.name} agregado a HAP")
+            logger.info("Dispositivo %s agregado a HAP", device_state.name)
 
     def _create_accessory(self, device_state: DeviceState):
         """
@@ -88,7 +88,6 @@ class SmartThingsBridge:
                         categories=device["categories"]
                     )
                     access.set_device_manager(self.device_manager)  # ✅ Inyectar el manager
-                    access.set_smartthings_service(self.smartthings_service)  # ✅ Inyectar el servicio
                     return access
         
         # Agregar más tipos de dispositivos aquí
