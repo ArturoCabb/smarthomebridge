@@ -8,6 +8,9 @@ class LGWasherAccessory(Accessory):
     category = CATEGORY_OTHER
 
     telegram_trigger = False
+    change_state_prev_value = None
+    change_remote_start_prev_value = None
+    change_remaining_time_prev_value = None
 
     def __init__(self, driver, display_name, device_id, device_manager):
         super().__init__(driver=driver, display_name=display_name)
@@ -87,6 +90,7 @@ class LGWasherAccessory(Accessory):
             print("LG Washer is turned ON")
             self.device_manager.send_command(self.device_id, command)
             self.char_on.set_value(1)
+            self.change_remote_start_prev_value = "PREVENT_ON"
         else:
             command = {
                 'location': {
@@ -115,25 +119,38 @@ class LGWasherAccessory(Accessory):
             state: WasherState obtenido del plugin
         """
         # Actualizar estado de encendido
-        self.encendido.set_value(1 if state.state.get('state') != "POWER_OFF" else 0)
-        # Actualiza notificacion para centrifugado
-        if state.state.get('state') == "RINSING":
-            self.char_status_ocupancy_detected.set_value(1)
-            self.char_status_ocupancy_status_tampered.set_value(1)
-            if self.telegram_trigger is False:
-                requests.get(url=TelegramConfig().telegram_url, json={"chat_id": TelegramConfig().telegram_chatid, "text": "La lavadora termino de lavar y ahora va a enjuagar"}, timeout=10)
-                self.telegram_trigger = True
-        else:
-            self.char_status_ocupancy_detected.set_value(0)
-            self.char_status_ocupancy_status_tampered.set_value(0)
-            self.telegram_trigger = False
-
-        # Actualizar estado de boton iniciar/pausar
-        if state.state.get('state') != "POWER_OFF" and state.state.get('state') != "PAUSE" and state.state.get('remote_start'):
-            self. is_paused = False
-            self.char_on.set_value(1)
-        else:
-            self.is_paused = True
-            self.char_on.set_value(0)
+        device_state = state.state.get('state')
+        if device_state != self.change_state_prev_value:
+            if device_state != "POWER_OFF":
+                self.encendido.set_value(1)
+            else:
+                self.encendido.set_value(0)
+            # Actualiza notificacion para centrifugado
+            if device_state == "RINSING":
+                self.char_status_ocupancy_detected.set_value(1)
+                self.char_status_ocupancy_status_tampered.set_value(1)
+                if self.telegram_trigger is False:
+                    requests.get(url=TelegramConfig().telegram_url, json={"chat_id": TelegramConfig().telegram_chatid, "text": "La lavadora termino de lavar y ahora va a enjuagar"}, timeout=10)
+                    self.telegram_trigger = True
+            else:
+                self.char_status_ocupancy_detected.set_value(0)
+                self.char_status_ocupancy_status_tampered.set_value(0)
+                self.telegram_trigger = False
+            self.change_state_prev_value = device_state
+        
+        if device_state != self.change_remote_start_prev_value:
+            # Actualizar estado de boton iniciar/pausar
+            if device_state != "POWER_OFF" and device_state != "PAUSE" and state.state.get('remote_start'):
+                self. is_paused = False
+                if self.char_on.value != 1:
+                    self.char_on.set_value(1)
+            else:
+                self.is_paused = True
+                self.char_on.set_value(0)
+            self.change_remote_start_prev_value = device_state
+            
         # Actualizar tiempo restante
-        self.char_timer_value.set_value(min(state.state.get('remain_time_m', 0), 100))
+        remain_time = state.state.get('remain_time_m')
+        if remain_time != self.change_remaining_time_prev_value:
+            self.char_timer_value.set_value(min(remain_time, 100))
+            self.change_remaining_time_prev_value = remain_time

@@ -77,7 +77,7 @@ class LGThinQClient(BaseClient):
             return response.json()
         except LGDeviceOfflineError:
             logger.warning("Recurso no disponible (416) para %s", url)
-            raise
+            raise LGDeviceOfflineError
         except requests.exceptions.RequestException as e:
             logger.error("Error en petición: %s", e)
             raise

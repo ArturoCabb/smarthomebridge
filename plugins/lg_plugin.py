@@ -78,7 +78,7 @@ class LGPlugin(BasePlugin):
                 logger.warning("Estado no parseado para tipo: %s", device_type)
                 return snapshot
 
-        except Exception as e:
+        except Exception:
             pass
 
     def send_command(

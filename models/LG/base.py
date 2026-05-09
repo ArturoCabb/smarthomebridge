@@ -1,4 +1,6 @@
 from models.base import BaseDevice, BaseDeviceProfile, BaseDeviceState
+
+
 class LGDeviceProfile(BaseDeviceProfile):
     """Perfil específico de LG con su estructura de properties"""
     pass

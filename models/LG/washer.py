@@ -394,6 +394,8 @@ class WasherState(LGDeviceState):
         Args:
             json_data: Diccionario con el snapshot
         """
+        if json_data == {}:
+            return cls()  # Retornar estado por defecto si no hay datos
         return cls(
             state=json_data.get('runState', 'POWER_OFF').get('currentState'),
             remote_start=json_data.get('remoteControlEnable').get('remoteControlEnabled'),
