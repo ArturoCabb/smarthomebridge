@@ -150,6 +150,7 @@ class SmartThingsService:
         else:  # POST
             if 'approve' in request.form:
                 redirect_uri = request.form.get('redirect_uri')
+                print(esta es la url que redirijo )
                 state = request.form.get('state')
                 client_id = request.form.get('client_id')
 
