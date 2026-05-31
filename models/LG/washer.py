@@ -42,7 +42,7 @@ class PropertyValue:
     w: Optional[List[EnumValue]] = None  # Valores de escritura
     
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> 'PropertyValue':
+    def from_json(self, json_data: Dict[str, Any]) -> 'PropertyValue':
         r_values = None
         w_values = None
         
@@ -52,7 +52,7 @@ class PropertyValue:
         if 'w' in json_data:
             w_values = [EnumValue.from_json(item) for item in json_data['w']]
         
-        return cls(r=r_values, w=w_values)
+        return self(r=r_values, w=w_values)
 
 
 @dataclass
@@ -66,8 +66,8 @@ class RangeValue:
     except_: Optional[List[int]] = None  # Valores excluidos del rango
     
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> 'RangeValue':
-        return cls(
+    def from_json(self, json_data: Dict[str, Any]) -> 'RangeValue':
+        return self(
             min=json_data.get('min', 0),
             max=json_data.get('max', 0),
             step=json_data.get('step', 1),
@@ -87,7 +87,7 @@ class Property:
     range: Optional[RangeValue] = None     # Para type="range"
     
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> 'Property':
+    def from_json(self, json_data: Dict[str, Any]) -> 'Property':
         value_ref = None
         if 'valueReference' in json_data:
             value_ref = ValueReference.from_json(json_data['valueReference'])
@@ -100,7 +100,7 @@ class Property:
         if 'range' in json_data:
             prop_range = RangeValue.from_json(json_data['range'])
         
-        return cls(
+        return self(
             type=json_data.get('type', 'string'),
             value_reference=value_ref,
             value=prop_value,
@@ -116,8 +116,8 @@ class Notification:
     push: Optional[List[str]] = None
     
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> 'Notification':
-        return cls(push=json_data.get('push'))
+    def from_json(self, json_data: Dict[str, Any]) -> 'Notification':
+        return self(push=json_data.get('push'))
 
 
 class LGwasher(LGDevice):
@@ -174,7 +174,7 @@ class WasherProfile(LGDeviceProfile):
     notification: Optional[Notification] = None
     
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> 'WasherProfile':
+    def from_json(self, json_data: Dict[str, Any]) -> 'WasherProfile':
         """
         Parsear el JSON del Device Profile de LG.
         
@@ -187,7 +187,7 @@ class WasherProfile(LGDeviceProfile):
         properties = json_data.get('property', {})
         
         # Mapear propiedades conocidas
-        profile = cls(
+        profile = self(
             device_type=json_data.get('deviceType', 'WASHER')
         )
         
@@ -387,24 +387,26 @@ class WasherState(LGDeviceState):
     error: Optional[str] = None
     
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> 'WasherState':
+    def from_json(self, json_data: Dict[str, Any]) -> 'WasherState':
         """
         Parsear estado desde el snapshot de la API.
         
         Args:
             json_data: Diccionario con el snapshot
         """
-        return cls(
+        if json_data == {}:
+            return self()  # Retornar estado por defecto si no hay datos
+        return self(
             state=json_data.get('runState', 'POWER_OFF').get('currentState'),
-            remote_start=json_data.get('remoteControlEnable').get('remoteControlEnabled'),
-            remain_time_h=json_data.get('timer').get('remainHour'),
-            remain_time_m=json_data.get('timer').get('remainMinute'),
-            reserve_time_h=json_data.get('timer').get('relativeHourToStart'),
-            reserve_time_m=json_data.get('timer').get('relativeMinuteToStart'),
-            initial_time_h=json_data.get('timer').get('totalHour'),
-            initial_time_m=json_data.get('timer').get('totalMinute'),
-            tcl_count=json_data.get('cycle').get('cycleCount'),
-            current_state=json_data.get('location').get('locationName'),
+            remote_start=json_data.get('remoteControlEnable', {}).get('remoteControlEnabled'),
+            remain_time_h=json_data.get('timer', {}).get('remainHour'),
+            remain_time_m=json_data.get('timer', {}).get('remainMinute'),
+            reserve_time_h=json_data.get('timer', {}).get('relativeHourToStart'),
+            reserve_time_m=json_data.get('timer', {}).get('relativeMinuteToStart'),
+            initial_time_h=json_data.get('timer', {}).get('totalHour'),
+            initial_time_m=json_data.get('timer', {}).get('totalMinute'),
+            tcl_count=json_data.get('cycle', {}).get('cycleCount'),
+            current_state=json_data.get('location', {}).get('locationName'),
             error=json_data.get('error')
         )
     

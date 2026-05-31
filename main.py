@@ -30,7 +30,7 @@ def main():
         sys.exit(0)
         
     except Exception as e:
-        logger.error(f"Error fatal: {e}", exc_info=True)
+        logger.error("Error fatal: %s", e, exc_info=True)
         sys.exit(1)
 
 if __name__ == '__main__':

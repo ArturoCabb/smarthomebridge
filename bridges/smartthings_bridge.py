@@ -33,7 +33,7 @@ class SmartThingsBridge:
         device_id = device_state.device_id
         
         if device_id in self.accessories:
-            logger.warning(f"Accessory ya existe para {device_id}")
+            logger.warning("Accessory ya existe para %s", device_id)
             return
         
         # Crear accessory HAP según el tipo de dispositivo
@@ -50,7 +50,7 @@ class SmartThingsBridge:
                 lambda ds: self._on_device_state_changed(ds)
             )
             
-            logger.info(f"Dispositivo {device_state.name} agregado a HAP")
+            logger.info("Dispositivo %s agregado a HAP", device_state.name)
 
     def _create_accessory(self, device_state: DeviceState):
         """
@@ -68,7 +68,7 @@ class SmartThingsBridge:
         # Importar el accessory correspondiente
         if brand == 'lg' and 'washer' in device_type:
             print("Device id de LG para coincidir con del del accesorio para smartthings " + device_state.device_id)
-            smartthings_device_conf = open(self.smartthings_service.devies_config_file, "r")
+            smartthings_device_conf = open(self.smartthings_service.devies_config_file, "r", encoding="utf-8")
             dat_file = smartthings_device_conf.read()
             smartthings_device_conf.close()
             dat_file = loads(dat_file)
@@ -88,12 +88,11 @@ class SmartThingsBridge:
                         categories=device["categories"]
                     )
                     access.set_device_manager(self.device_manager)  # ✅ Inyectar el manager
-                    access.set_smartthings_service(self.smartthings_service)  # ✅ Inyectar el servicio
                     return access
         
         # Agregar más tipos de dispositivos aquí
         
-        logger.warning(f"No hay accessory HAP para {brand} {device_type}")
+        logger.warning("No hay accessory HAP para %s %s", brand, device_type)
         return None
     
     def _on_device_state_changed(self, device_state: DeviceState):
@@ -112,3 +111,14 @@ class SmartThingsBridge:
                 accessory.update_from_device_state(device_state) # Esta es la funcion que se llmam a que le dice al servicio hap que en telefono pinte el estado del dispositivo
             except Exception as e:
                 pass
+            
+            # Notificar a SmartThings del cambio de estado
+            if self.smartthings_service:
+                try:
+                    self.smartthings_service.send_device_status([accessory])
+                except Exception as e:
+                    logger.error("Error sending device status: %s", e)
+                    try:
+                        self.smartthings_service.refresh_token()
+                    except Exception as e2:
+                        logger.error("Error refreshing token: %s", e2)

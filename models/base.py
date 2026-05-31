@@ -4,18 +4,22 @@ from typing import Any, Dict
 
 class BaseDeviceProfile(ABC):
     """Perfil base de cualquier dispositivo"""
+    
     @abstractmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> Any:
+    def from_json(self, json_data: Dict[str, Any]) -> Any:
+        """Crear un perfil a partir de datos JSON."""
         pass
 
 class BaseDeviceState(ABC):
     """Estado base de cualquier dispositivo"""
     @abstractmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> Any:
+    def from_json(self, json_data: Dict[str, Any]) -> Any:
+        """Crear un estado a partir de datos JSON."""
         pass
     
     @abstractmethod
     def is_online(self) -> bool:
+        """Verificar si el dispositivo está en línea."""
         pass
 
 class BaseDevice(ABC):
@@ -34,12 +38,15 @@ class BaseDevice(ABC):
     
     @abstractmethod
     def get_profile(self) -> BaseDeviceProfile:
+        """Obtener el perfil del dispositivo."""
         pass
     
     @abstractmethod
     def get_state(self) -> BaseDeviceState:
+        """Obtener el estado del dispositivo."""
         pass
     
     @abstractmethod
     def send_command(self, command: dict) -> bool:
+        """Enviar un comando al dispositivo."""
         pass

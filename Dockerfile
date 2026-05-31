@@ -11,6 +11,4 @@ RUN apt update && \
  mkdir -p .smarthome && \
  rm -rf /var/lib/apt/lists/*
 
-COPY . .
-
 CMD ["python", "main.py"]
